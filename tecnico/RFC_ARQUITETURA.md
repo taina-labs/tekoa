@@ -1,15 +1,15 @@
-# RFC: Tainá Backend Architecture
+# RFC: Tainá PWA Superapp Architecture
 
-**Status:** Draft  
-**Author:** Technical Architecture Team  
-**Date:** 2025-08-31  
-**Version:** 1.0
+**Status:** Draft
+**Author:** Technical Architecture Team
+**Date:** 2025-08-31
+**Version:** 2.0 (PWA Monolith)
 
 ## Executive Summary
 
-This RFC defines the technical architecture for Tainá, a community-owned digital infrastructure platform. Tainá serves as the central backend monolith supporting multiple client applications across the ecosystem, enabling communities to self-host their digital services with complete data sovereignty.
+This RFC defines the technical architecture for Tainá, a community-owned digital infrastructure platform delivered as a Progressive Web Application (PWA). Tainá is a superapp monolith that combines multiple services (messaging, photos, file storage) into a single, cohesive user experience, enabling communities to self-host their digital services with complete data sovereignty.
 
-The architecture prioritizes rapid development for MVP delivery while maintaining extensibility for future distributed deployment. Built as a modular monolith in Elixir/Phoenix, Tainá provides backend services for eight client applications through a unified API layer with real-time communication capabilities.
+The architecture prioritizes rapid MVP development through a mobile-first PWA approach while maintaining clear service boundaries for future client extraction. Built as a modular monolith in Elixir/Phoenix with LiveView, Tainá delivers real-time, app-like experiences without the complexity of separate native applications or API layers.
 
 ## System Overview
 
@@ -17,92 +17,146 @@ The architecture prioritizes rapid development for MVP delivery while maintainin
 
 Tainá operates on the principle of "Functional Core, Imperative Shell" with clear separation between pure business logic and external integrations. The system emphasizes community-scale deployment (5-50 users initially) with hardware constraints matching community budgets (Raspberry Pi to custom servers).
 
-### Client Ecosystem Architecture
+### PWA Superapp Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Client Applications                       │
-├─────────────┬─────────────┬─────────────┬─────────────────┤
-│    Jaci     │    Guará    │   Araci     │   Others...     │
-│  (Photos)   │ (Messaging) │ (Streaming) │   (6 more)      │
-│             │             │             │                 │
-│   Mobile    │    Web      │   Smart TV  │   IoT/CLI       │
-│    Apps     │    Apps     │    Apps     │    Apps         │
-└─────────────┴─────────────┴─────────────┴─────────────────┘
-                              │
-                    ┌─────────▼─────────┐
-                    │  GraphQL + WS API │
-                    └─────────┬─────────┘
-                              │
-┌─────────────────────────────▼─────────────────────────────┐
-│                  TAINÁ BACKEND                            │
-│                 (This Project)                            │
-│                                                           │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │           Modular Monolith                         │  │
-│  │                                                     │  │
-│  │  ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐ │  │
-│  │  │ Auth  │ │ Media │ │ Chat  │ │Files  │ │ ...   │ │  │
-│  │  │Context│ │Context│ │Context│ │Context│ │       │ │  │
-│  │  └───────┘ └───────┘ └───────┘ └───────┘ └───────┘ │  │
-│  └─────────────────────────────────────────────────────┘  │
-│                                                           │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │              Shared Infrastructure                  │  │
-│  │  • Event Bus (NATS)  • Database (PostgreSQL)      │  │
-│  │  • File Storage      • Cache Layer                 │  │
-│  │  • Monitoring        • Security                    │  │
-│  └─────────────────────────────────────────────────────┘  │
-└───────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│               TAINÁ PWA SUPERAPP                         │
+│            (Mobile-First Web Application)                │
+│                                                          │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │         LiveView Frontend Layer                   │  │
+│  │                                                    │  │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐          │  │
+│  │  │  Ybira   │ │   Jaci   │ │  Guará   │          │  │
+│  │  │  Files   │ │  Photos  │ │Messaging │          │  │
+│  │  │   UI     │ │    UI    │ │    UI    │          │  │
+│  │  └────┬─────┘ └────┬─────┘ └────┬─────┘          │  │
+│  │       │            │            │                 │  │
+│  │  ┌────┴────────────┴────────────┴─────────────┐   │  │
+│  │  │     Shared Components & Navigation        │   │  │
+│  │  │  (Service Switcher, Auth, Layouts)        │   │  │
+│  │  └───────────────────────────────────────────┘   │  │
+│  └────────────────────────────────────────────────────┘  │
+│                          │                               │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │         Service Layer (Business Logic)           │  │
+│  │                                                    │  │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐          │  │
+│  │  │  Ybira   │◄┤   Jaci   │ │  Guará   │          │  │
+│  │  │  (Files) │ │ (Photos) │◄┤(Messaging)          │  │
+│  │  └─────┬────┘ └──────────┘ └──────────┘          │  │
+│  │        └──────► (Foundation Service)              │  │
+│  │                                                    │  │
+│  │  ┌──────────┐ ┌──────────────────────────────┐   │  │
+│  │  │   Auth   │ │        Core                  │   │  │
+│  │  │          │ │  (Communities, Shared Logic) │   │  │
+│  │  └──────────┘ └──────────────────────────────┘   │  │
+│  └────────────────────────────────────────────────────┘  │
+│                          │                               │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │         Infrastructure Layer                      │  │
+│  │  • PostgreSQL (Separate Schemas)                 │  │
+│  │  • Phoenix PubSub • Phoenix Channels             │  │
+│  │  • File Storage   • Session Management           │  │
+│  └────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────┘
+              │
+    ┌─────────▼──────────┐
+    │  Home Server +     │
+    │  VPN Setup         │
+    └────────────────────┘
 ```
+
+**Note:** Arrows indicate service dependencies. Ybira (Files) is the foundation service used by both Jaci (Photos) and Guará (Messaging) for file operations.
 
 ## Architectural Principles
 
 ### Modular Monolith Structure
 
-The system organizes as a single deployable application with clear context boundaries. Each functional area maintains independence while sharing common infrastructure.
+The system organizes as a single deployable Phoenix application with clear service boundaries. Each service maintains independence while sharing common infrastructure, enabling future extraction to standalone applications.
 
-**Context Organization:**
-- Each client application maps to one primary context (Jaci → Media Context)
-- Contexts communicate through well-defined interfaces
-- Shared concerns (Auth, Monitoring) exist as cross-cutting contexts
-- Database schemas align with context boundaries
+**Service Organization:**
+
+```elixir
+lib/taina/
+├── auth/              # Authentication & authorization
+├── core/              # Communities & shared business logic
+├── ybira/             # File system service (foundation)
+├── jaci/              # Photos service (depends on Ybira)
+└── guara/             # Messaging service (depends on Ybira)
+
+lib/taina_web/
+├── live/
+│   ├── ybira/         # File browser LiveViews
+│   ├── jaci/          # Photo gallery LiveViews
+│   └── guara/         # Chat LiveViews
+├── components/        # Shared UI components
+└── controllers/       # Session, future API endpoints
+```
+
+**Service Communication:**
+
+- Services call each other directly through public APIs (e.g., `Taina.Ybira.upload/1`)
+- Clear boundaries prevent tight coupling
+- Shared infrastructure (Auth, Core) accessible to all services
+
+### PWA Frontend Layer
+
+**LiveView Architecture:** Server-rendered UI with real-time updates, minimal JavaScript
+**Mobile-First Design:** Touch-optimized, responsive layouts
+**Service Switcher:** Unified navigation between Ybira, Jaci, and Guará
+**Progressive Enhancement:** Installable, offline-capable fallback page
+
+**LiveView Benefits:**
+
+- Real-time updates without client-side state management
+- Direct access to backend contexts (no API serialization overhead)
+- Simple upload handling with `Phoenix.LiveView.allow_upload`
+- Built-in security (CSRF, authentication integration)
 
 ### Event-Driven Communication
 
-**Internal Events:** Message passing between contexts using OTP processes  
-**External Events:** NATS-based pub/sub for client applications and future federation  
-**Real-time:** Phoenix Channels for immediate client updates
+**UI Updates:** Phoenix PubSub for LiveView subscriptions (e.g., new message notifications)
+**Real-time Features:** Phoenix Channels for chat presence and typing indicators
+**Inter-Service Events:** Direct function calls for MVP (async events deferred)
+**Future Federation:** Event bus for inter-community communication (post-MVP)
+
+**Simplified Approach:** Avoid over-engineering. Use PubSub only when needed for cross-user updates.
 
 ### Storage Strategy
 
-**Structured Data:** PostgreSQL with schema-per-context approach  
-**File Storage:** Local filesystem with Minio-compatible API for future object storage migration  
-**Cache Layer:** ETS/Redis for session and frequently accessed data
+**Structured Data:** PostgreSQL with separate schemas per service
+**File Storage:** Local filesystem via Phoenix uploads
+**Session Management:** Phoenix session-based authentication
+**Cache Layer:** ETS for frequently accessed data (optional Redis for multi-instance)
 
-### API Design
+### API Design (Future)
 
-**GraphQL:** Primary client API for flexible data fetching  
-**WebSocket:** Real-time communication via Phoenix Channels  
-**REST:** Administrative endpoints and webhook integrations
+**MVP:** No external API layer. LiveView serves all UI needs.
+**Post-MVP:** REST or GraphQL APIs added when extracting native clients
+**Real-time:** Phoenix Channels for chat and presence (used internally by LiveView)
 
 ## Service Context Definitions
 
 ### Core Contexts
 
-#### Authentication Context
-**Purpose:** Centralized identity and authorization management  
+#### Authentication Context (`Taina.Auth`)
+
+**Purpose:** Centralized identity and authorization management
 **Responsibilities:**
-- User registration and authentication (email/password, OTP)
+
+- User registration and authentication (email/password)
 - Role-based access control (Admin, Member, Guest)
-- Session management and JWT token handling
+- Session management (Phoenix session-based)
 - Community membership management
 
-**Database Schema:**
+**Database Schema (public schema):**
+
 ```
 users
-├── id (uuid)
-├── email (unique)
+├── id (nanoid)
+├── email (unique per community)
 ├── encrypted_password
 ├── role (enum: admin, member, guest)
 ├── community_id (foreign key)
@@ -110,232 +164,450 @@ users
 └── timestamps
 
 communities
-├── id (uuid)
+├── id (nanoid)
 ├── name (unique)
 ├── settings (jsonb)
-├── storage_quota
-└── timestamps
-
-user_sessions
-├── id (uuid)
-├── user_id (foreign key)
-├── token_hash
-├── expires_at
+├── storage_quota_gb
 └── timestamps
 ```
 
-#### Media Context (Jaci - Photos)
-**Purpose:** Photo and video storage with intelligent organization  
+**LiveView Integration:**
+
+- Login/Register LiveViews with form validation
+- Session-based authentication via `on_mount` hooks
+- Plug pipeline for authorization checks
+
+#### Storage Service (`Taina.Ybira` - Files) **[Foundation Service]**
+
+**Purpose:** General-purpose file system service (used by Jaci and Guará)
 **Responsibilities:**
-- File upload and processing
-- Automatic categorization and tagging
-- Face recognition and grouping
-- Timeline and album management
-- Mobile backup synchronization
 
-**Key Events:**
-- `media.file.uploaded`
-- `media.album.created`
-- `media.face.detected`
-- `media.backup.completed`
+- File and folder management (CRUD operations)
+- iPad Files-like navigation (breadcrumbs, hierarchical browsing)
+- File upload via `Phoenix.LiveView.allow_upload`
+- Document preview (PDF minimum for MVP)
+- Permissions and sharing (owner + community members)
 
-#### Communication Context (Guará - Messaging)
-**Purpose:** Real-time messaging and group communication  
+**Database Schema (ybira schema):**
+
+```
+ybira.files
+├── id (nanoid)
+├── user_id (foreign key to public.users)
+├── community_id (foreign key to public.communities)
+├── folder_id (foreign key to ybira.folders, nullable for root)
+├── filename
+├── original_filename
+├── file_path
+├── mime_type
+├── file_size_bytes
+├── metadata (jsonb)
+└── timestamps
+
+ybira.folders
+├── id (nanoid)
+├── user_id
+├── community_id
+├── parent_id (self-referential, nullable for root)
+├── name
+└── timestamps
+```
+
+**Public API (used by other services):**
+
+```elixir
+Taina.Ybira.upload(user, attrs)           # Upload file
+Taina.Ybira.get_file(id)                   # Retrieve file metadata
+Taina.Ybira.delete_file(id, user)          # Delete with auth check
+Taina.Ybira.list_files(folder_id, user)    # List files in folder
+```
+
+**LiveView Components:**
+
+- File browser with folder navigation
+- Upload component with progress tracking
+- Document preview modal (PDF, images)
+- File actions (rename, move, delete)
+
+#### Photos Service (`Taina.Jaci`) **[Depends on Ybira]**
+
+**Purpose:** Photo and video gallery with organization
 **Responsibilities:**
-- Direct and group messaging
-- Message encryption and security
-- File sharing integration
-- Online presence management
-- Message history and search
 
-**Key Events:**
-- `chat.message.sent`
-- `chat.user.online`
-- `chat.group.created`
-- `chat.file.shared`
+- Photo/video upload (delegates to Ybira)
+- Timeline and grid gallery views
+- Basic album management
+- Photo/video metadata extraction
 
-#### Storage Context (Ybira - Files)
-**Purpose:** General file storage and sharing  
+**Database Schema (jaci schema):**
+
+```
+jaci.photos
+├── id (nanoid)
+├── file_id (foreign key to ybira.files)
+├── user_id
+├── community_id
+├── taken_at (extracted from EXIF)
+├── metadata (jsonb: dimensions, location, camera info)
+└── timestamps
+
+jaci.albums
+├── id (nanoid)
+├── user_id
+├── community_id
+├── name
+├── slug (URL-friendly)
+├── cover_photo_id (foreign key to jaci.photos)
+└── timestamps
+
+jaci.album_photos
+├── album_id
+├── photo_id
+└── position (integer for ordering)
+```
+
+**Service Integration:**
+
+```elixir
+# Jaci uses Ybira for file storage
+{:ok, file} = Taina.Ybira.upload(user, file_params)
+{:ok, photo} = Taina.Jaci.create_photo(user, %{file_id: file.id, metadata: ...})
+```
+
+**LiveView Components:**
+
+- Photo upload with live progress
+- Gallery grid with infinite scroll
+- Album management UI
+- Photo detail view with metadata
+
+#### Messaging Service (`Taina.Guara`) **[Depends on Ybira]**
+
+**Purpose:** Real-time messaging (DM and groups only, no status)
 **Responsibilities:**
-- File and folder management
-- Version control and history
-- Sharing and permissions
-- Sync across devices
-- Trash and recovery
 
-#### Streaming Context (Araci - Media Library)
-**Purpose:** Video and audio streaming services  
-**Responsibilities:**
-- Media library management
-- Transcoding and optimization
-- Streaming protocols
-- Watch history and recommendations
-- Subtitle and metadata handling
+- Direct messages and group conversations
+- Text, image, video, and audio attachments (via Ybira)
+- Real-time presence via Phoenix Channels
+- Message history and delivery
+- Typing indicators
 
-#### Monitoring Context (Karai - Security)
-**Purpose:** System security and monitoring  
-**Responsibilities:**
-- Intrusion detection
-- System health monitoring
-- Backup management
-- Firewall integration
-- Security event logging
+**Database Schema (guara schema):**
 
-#### Dashboard Context (Nhaman - Control Panel)
-**Purpose:** Administrative interface and system management  
-**Responsibilities:**
-- System status overview
-- User and community management
-- Configuration management
-- Analytics and reporting
-- System maintenance tools
+```
+guara.conversations
+├── id (nanoid)
+├── community_id
+├── name (for groups, null for DM)
+├── conversation_type (enum: 'direct', 'group')
+├── created_by
+└── timestamps
 
-#### Automation Context (Ka'a - Smart Home)
-**Purpose:** IoT device management and automation  
-**Responsibilities:**
-- Device discovery and pairing
-- Automation rules and triggers
-- Sensor data collection
-- Integration with external services
-- Energy monitoring
+guara.participants
+├── conversation_id
+├── user_id
+├── joined_at
+└── last_read_at
+
+guara.messages
+├── id (nanoid)
+├── conversation_id
+├── user_id
+├── content (text)
+├── message_type (enum: 'text', 'image', 'video', 'audio')
+├── file_id (foreign key to ybira.files, nullable)
+├── metadata (jsonb)
+└── timestamps
+```
+
+**Service Integration:**
+
+```elixir
+# Guará uses Ybira for file attachments
+{:ok, file} = Taina.Ybira.upload(user, attachment)
+{:ok, message} = Taina.Guara.send_message(conversation_id, user, %{
+  content: "Check this out!",
+  message_type: :image,
+  file_id: file.id
+})
+```
+
+**Phoenix Channels Integration:**
+
+- `conversation:{id}` topic for real-time messages
+- Presence tracking for online users
+- Typing indicators via presence metadata
+
+**LiveView Components:**
+
+- Conversation list with unread counts
+- Message thread with infinite scroll
+- Message composer with attachment support
+- Real-time message updates via PubSub
+
+### Post-MVP Services (Deferred)
+
+The following services are planned for future iterations but not included in the 1-year MVP:
+
+- **Araci (Streaming):** Video/audio streaming library
+- **Karai (Monitoring):** Security and system monitoring dashboard
+- **Nhaman (Dashboard):** Administrative control panel
+- **Ka'a (Smart Home):** IoT device management
+
+**MVP Focus:** Ybira (Files), Jaci (Photos), Guará (Messaging) provide core community needs.
 
 ### Cross-Cutting Concerns
 
-#### Event Bus
-**Technology:** NATS with JetStream for durability  
-**Pattern:** Event Sourcing for critical operations  
-**Guarantees:** At-least-once delivery for external events
-
 #### Database Design
 
-**Primary Key Strategy:** NanoID for internal IDs, slugs for public URLs  
-**Multi-tenant Strategy:** Schema-per-context with shared user/community tables  
-**Migration Strategy:** Ecto migrations with context-aware organization
+**Primary Key Strategy:** NanoID for internal IDs, slugs for public URLs
+**Multi-tenant Strategy:** Separate PostgreSQL schemas per service
+**Migration Strategy:** Ecto migrations organized by service context
 
 ```
 Database: taina_production
 
-Schemas:
-├── public (shared tables: users, communities, sessions)
-├── media (photos, albums, faces, metadata)
-├── chat (messages, groups, participants, reactions)
-├── files (documents, folders, versions, shares)
-├── streaming (movies, series, episodes, watch_history)
-├── monitoring (events, metrics, alerts, backups)
-├── dashboard (widgets, reports, configurations)
-└── automation (devices, rules, triggers, sensors)
+Schemas (MVP):
+├── public (shared: users, communities)
+├── ybira (files, folders)
+├── jaci (photos, albums, album_photos)
+└── guara (conversations, participants, messages)
+
+Future Schemas (Post-MVP):
+├── araci (streaming media)
+├── karai (monitoring, security)
+└── ... (other services)
 ```
 
-## Event-Driven Architecture
+**Schema Isolation Benefits:**
 
-### Event Categories
+- Clean service boundaries for future extraction
+- Separate permissions per schema if needed
+- Clear ownership of tables
+- Migration organization matches service organization
 
-**Command Events:** Trigger actions across contexts  
-**Domain Events:** Represent business state changes  
-**Integration Events:** External system communication  
-**System Events:** Infrastructure and monitoring
+#### Real-time Communication
 
-### Event Schema Design
+**Phoenix PubSub:** For LiveView updates across users (e.g., new messages)
+**Phoenix Channels:** For chat presence and typing indicators
+**No External Event Bus:** NATS deferred to federation phase (keep it simple for MVP)
+
+## Real-time Architecture (Simplified for MVP)
+
+### LiveView Updates
+
+**PubSub Topics:**
+
+- `user:{user_id}` - Personal notifications
+- `conversation:{conversation_id}` - New messages in chat
+- `album:{album_id}` - Photo additions to shared albums
+
+**Usage Pattern:**
 
 ```elixir
-%{
-  type: "photo.uploaded",           # Simple dot notation
-  user_id: "user_nanoid",
-  data: %{                         # Flexible payload
-    photo_id: "photo_nanoid",
-    filename: "sunset.jpg"
-  },
-  timestamp: ~U[2025-08-31 10:30:00Z]
+# In LiveView
+def mount(_params, _session, socket) do
+  Phoenix.PubSub.subscribe(Taina.PubSub, "user:#{socket.assigns.current_user.id}")
+  {:ok, socket}
+end
+
+def handle_info({:new_message, message}, socket) do
+  # Update UI in real-time
+  {:noreply, update(socket, :messages, &[message | &1])}
+end
+
+# In service context
+Phoenix.PubSub.broadcast(Taina.PubSub, "user:#{user.id}", {:new_message, message})
+```
+
+### Phoenix Channels (Chat Only)
+
+**Guará-specific channels:**
+
+- `conversation:{id}` - Real-time messaging
+- Presence tracking for online/offline status
+- Typing indicators via presence metadata
+
+**No Complex Event Sourcing:** Keep it simple. Direct function calls + PubSub for cross-user updates.
+
+## LiveView Layer Design
+
+### PWA Structure
+
+```
+lib/taina_web/
+├── live/
+│   ├── auth_live/
+│   │   ├── login.ex              # Login form
+│   │   └── register.ex           # Registration form
+│   ├── ybira_live/
+│   │   ├── file_browser.ex       # Main file browser
+│   │   ├── upload.ex             # Upload modal
+│   │   └── preview.ex            # File preview modal
+│   ├── jaci_live/
+│   │   ├── gallery.ex            # Photo grid/timeline
+│   │   ├── upload.ex             # Photo upload
+│   │   ├── album_index.ex        # Album list
+│   │   └── album_show.ex         # Album detail
+│   └── guara_live/
+│       ├── conversation_index.ex # Conversation list
+│       └── conversation_show.ex  # Message thread
+├── components/
+│   ├── core_components.ex        # Phoenix default components
+│   ├── navigation.ex             # Service switcher, nav bar
+│   ├── file_upload.ex            # Shared upload component
+│   └── avatar.ex                 # User avatar component
+├── controllers/
+│   └── session_controller.ex     # Session create/destroy
+└── router.ex                      # Routes and pipelines
+```
+
+### Route Structure
+
+```elixir
+scope "/", TainaWeb do
+  pipe_through [:browser, :require_authenticated_user]
+
+  # Service navigation
+  live "/", DashboardLive.Index           # Landing/service switcher
+
+  # Ybira (Files)
+  live "/files", YbiraLive.FileBrowser
+  live "/files/folders/:id", YbiraLive.FileBrowser
+
+  # Jaci (Photos)
+  live "/photos", JaciLive.Gallery
+  live "/photos/albums", JaciLive.AlbumIndex
+  live "/photos/albums/:slug", JaciLive.AlbumShow
+
+  # Guará (Messaging)
+  live "/messages", GuaraLive.ConversationIndex
+  live "/messages/:id", GuaraLive.ConversationShow
+end
+
+scope "/auth", TainaWeb do
+  pipe_through :browser
+
+  live "/login", AuthLive.Login
+  live "/register", AuthLive.Register
+  post "/session", SessionController, :create
+  delete "/session", SessionController, :delete
+end
+```
+
+### LiveView Patterns
+
+**Authentication Hook:**
+
+```elixir
+defmodule TainaWeb.UserAuth do
+  def on_mount(:require_authenticated_user, _params, session, socket) do
+    case get_user_from_session(session) do
+      {:ok, user} -> {:cont, assign(socket, current_user: user)}
+      {:error, _} -> {:halt, redirect(socket, to: "/auth/login")}
+    end
+  end
+end
+```
+
+**File Upload Pattern:**
+
+```elixir
+def mount(_params, _session, socket) do
+  {:ok,
+   socket
+   |> assign(:uploaded_files, [])
+   |> allow_upload(:photos, accept: ~w(.jpg .jpeg .png .heic), max_entries: 10)}
+end
+
+def handle_event("save", _params, socket) do
+  uploaded_files =
+    consume_uploaded_entries(socket, :photos, fn %{path: path}, entry ->
+      # Process upload via Ybira service
+      Taina.Ybira.upload(socket.assigns.current_user, path, entry)
+    end)
+
+  {:noreply, update(socket, :uploaded_files, &(&1 ++ uploaded_files))}
+end
+```
+
+### PWA Manifest & Service Worker
+
+**Manifest.json:**
+
+```json
+{
+  "name": "Tainá",
+  "short_name": "Tainá",
+  "description": "Community Digital Infrastructure",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#1F2937",
+  "background_color": "#111827",
+  "icons": [...]
 }
 ```
 
-**Day 1 Event Types:**
-- Authentication: `user.signed_in`, `user.signed_out`
-- Media: `photo.uploaded`, `album.created`  
-- Chat: `message.sent`, `user.online`, `user.offline`
-
-### Event Flow Patterns
-
-**User Action Flow:**
-```
-Client Request → Context Handler → Domain Logic → Event Emission → 
-Event Bus → Interested Contexts → Side Effects → Client Notification
-```
-
-**Inter-Context Communication:**
-```
-Context A → Event Bus → Context B Handler → Business Logic → 
-Response Event → Context A → Client Update
-```
-
-## API Layer Design
-
-### GraphQL Operations (Day 1)
-
-**Queries (Read Actions):**
-- `me` - Current user info
-- `photos` - List user photos  
-- `albums` - List user albums
-- `conversations` - List user conversations
-- `messages` - Get conversation messages
-
-**Mutations (Write Actions):**
-- `signIn` / `signOut` - Authentication
-- `uploadPhoto` - Add new photo
-- `createAlbum` - Create photo album
-- `sendMessage` - Send chat message
-- `createConversation` - Start new chat
-
-**Subscriptions (Live Updates):**
-- `messageReceived` - New messages in conversation
-- `photoUploaded` - Photo processing complete  
-- `userPresence` - Online/offline status
-
-### Real-time Communication
-
-**Phoenix Channels Topics:**
-- `user:{user_id}` - Personal notifications
-- `community:{community_id}` - Community-wide updates  
-- `conversation:{conversation_id}` - Chat messages
-- `system:alerts` - System notifications
+**Service Worker:** Basic offline fallback for MVP (full offline sync deferred)
 
 ## Security Architecture
 
-### Authentication Flow
+### Authentication Flow (Session-Based)
 
 ```
-1. Client → POST /api/auth/signin
-2. Server validates credentials
-3. JWT token issued with claims (user_id, community_id, role)
-4. Client includes token in Authorization header
-5. GraphQL resolver validates token and extracts context
+1. User visits /auth/login LiveView
+2. Form submission → POST /auth/session
+3. Server validates credentials via Taina.Auth
+4. Phoenix session created with user_id
+5. Redirect to dashboard
+6. LiveView mount checks session via on_mount hook
+7. Current user loaded and assigned to socket
 ```
+
+**Session Storage:** Phoenix encrypted cookies (stateless) or ETS/Redis (stateful)
 
 ### Authorization Strategy
 
 **Role-Based Access Control (RBAC):**
-- Admin: Full community access
-- Member: Standard user permissions  
-- Guest: Limited read access
+
+- Admin: Full community access + user management
+- Member: Standard user permissions (own files, community messages)
+- Guest: Limited read access (future feature)
 
 **Resource-Level Security:**
-- Media files: Owner + community members
-- Messages: Conversation participants only
-- Files: Explicit sharing permissions
+
+```elixir
+# In service contexts
+def delete_file(file_id, %User{} = current_user) do
+  with {:ok, file} <- get_file(file_id),
+       :ok <- authorize(:delete, file, current_user) do
+    # Perform deletion
+  end
+end
+
+defp authorize(:delete, %File{user_id: user_id}, %User{id: user_id}), do: :ok
+defp authorize(:delete, %File{community_id: cid}, %User{community_id: cid, role: :admin}), do: :ok
+defp authorize(_, _, _), do: {:error, :unauthorized}
+```
+
+**LiveView Security:**
+
+- CSRF protection built-in
+- Session-based auth prevents token theft
+- File uploads validated server-side (mime type, size)
 
 ### Data Protection
 
-**Encryption at Rest:** Database and file system encryption  
-**Encryption in Transit:** TLS 1.3 for all communications  
-**Privacy:** Optional client-side encryption for sensitive data
+**Encryption at Rest:** Optional database/filesystem encryption at deployment level
+**Encryption in Transit:** TLS 1.3 for all communications (handled by reverse proxy)
+**Privacy:** Community data isolation via community_id checks
 
-## Database Schema Design
+## Database Schema Design (MVP)
 
-### Core Tables
+### Shared Schema (public)
 
 ```sql
--- Shared Schema (public)
-CREATE TABLE communities (
+CREATE TABLE public.communities (
   id VARCHAR(21) PRIMARY KEY DEFAULT nanoid(),
   name VARCHAR(255) UNIQUE NOT NULL,
   subdomain VARCHAR(50) UNIQUE,
@@ -345,7 +617,7 @@ CREATE TABLE communities (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE users (
+CREATE TABLE public.users (
   id VARCHAR(21) PRIMARY KEY DEFAULT nanoid(),
   community_id VARCHAR(21) NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
   email VARCHAR(255) NOT NULL,
@@ -358,90 +630,156 @@ CREATE TABLE users (
   UNIQUE(community_id, email)
 );
 
--- Media Schema
-CREATE SCHEMA media;
+CREATE INDEX idx_users_community ON public.users(community_id, role);
+CREATE INDEX idx_users_email ON public.users(community_id, email);
+```
 
-CREATE TABLE media.files (
+### Ybira Schema (Files)
+
+```sql
+CREATE SCHEMA ybira;
+
+CREATE TABLE ybira.folders (
   id VARCHAR(21) PRIMARY KEY DEFAULT nanoid(),
-  user_id VARCHAR(21) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  community_id VARCHAR(21) NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
+  user_id VARCHAR(21) NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  community_id VARCHAR(21) NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  parent_id VARCHAR(21) REFERENCES ybira.folders(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE ybira.files (
+  id VARCHAR(21) PRIMARY KEY DEFAULT nanoid(),
+  user_id VARCHAR(21) NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  community_id VARCHAR(21) NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  folder_id VARCHAR(21) REFERENCES ybira.folders(id) ON DELETE SET NULL,
   filename VARCHAR(255) NOT NULL,
   original_filename VARCHAR(255) NOT NULL,
   file_path VARCHAR(500) NOT NULL,
   mime_type VARCHAR(100) NOT NULL,
   file_size_bytes BIGINT NOT NULL,
   metadata JSONB DEFAULT '{}',
-  processing_status VARCHAR(20) DEFAULT 'pending',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE media.albums (
+CREATE INDEX idx_files_user ON ybira.files(user_id, created_at DESC);
+CREATE INDEX idx_files_folder ON ybira.files(folder_id);
+CREATE INDEX idx_folders_parent ON ybira.folders(parent_id);
+```
+
+### Jaci Schema (Photos)
+
+```sql
+CREATE SCHEMA jaci;
+
+CREATE TABLE jaci.photos (
   id VARCHAR(21) PRIMARY KEY DEFAULT nanoid(),
-  user_id VARCHAR(21) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  community_id VARCHAR(21) NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
+  file_id VARCHAR(21) NOT NULL REFERENCES ybira.files(id) ON DELETE CASCADE,
+  user_id VARCHAR(21) NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  community_id VARCHAR(21) NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  taken_at TIMESTAMP WITH TIME ZONE,
+  metadata JSONB DEFAULT '{}',  -- EXIF data, dimensions, etc.
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE jaci.albums (
+  id VARCHAR(21) PRIMARY KEY DEFAULT nanoid(),
+  user_id VARCHAR(21) NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  community_id VARCHAR(21) NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
-  slug VARCHAR(255) UNIQUE,  -- URL-friendly: /albums/vacation-2025
-  description TEXT,
-  cover_file_id VARCHAR(21) REFERENCES media.files(id),
-  is_public BOOLEAN DEFAULT FALSE,
+  slug VARCHAR(255) UNIQUE,
+  cover_photo_id VARCHAR(21) REFERENCES jaci.photos(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Chat Schema  
-CREATE SCHEMA chat;
+CREATE TABLE jaci.album_photos (
+  album_id VARCHAR(21) NOT NULL REFERENCES jaci.albums(id) ON DELETE CASCADE,
+  photo_id VARCHAR(21) NOT NULL REFERENCES jaci.photos(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (album_id, photo_id)
+);
 
-CREATE TABLE chat.conversations (
+CREATE INDEX idx_photos_user ON jaci.photos(user_id, taken_at DESC NULLS LAST);
+CREATE INDEX idx_photos_file ON jaci.photos(file_id);
+```
+
+### Guará Schema (Messaging)
+
+```sql
+CREATE SCHEMA guara;
+
+CREATE TABLE guara.conversations (
   id VARCHAR(21) PRIMARY KEY DEFAULT nanoid(),
-  community_id VARCHAR(21) NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
-  name VARCHAR(255),
+  community_id VARCHAR(21) NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  name VARCHAR(255),  -- For groups, null for DM
   conversation_type VARCHAR(20) DEFAULT 'direct' CHECK (conversation_type IN ('direct', 'group')),
-  created_by VARCHAR(21) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_by VARCHAR(21) NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE chat.messages (
+CREATE TABLE guara.participants (
+  conversation_id VARCHAR(21) NOT NULL REFERENCES guara.conversations(id) ON DELETE CASCADE,
+  user_id VARCHAR(21) NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_read_at TIMESTAMP WITH TIME ZONE,
+  PRIMARY KEY (conversation_id, user_id)
+);
+
+CREATE TABLE guara.messages (
   id VARCHAR(21) PRIMARY KEY DEFAULT nanoid(),
-  conversation_id VARCHAR(21) NOT NULL REFERENCES chat.conversations(id) ON DELETE CASCADE,
-  user_id VARCHAR(21) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  conversation_id VARCHAR(21) NOT NULL REFERENCES guara.conversations(id) ON DELETE CASCADE,
+  user_id VARCHAR(21) NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
-  message_type VARCHAR(20) DEFAULT 'text' CHECK (message_type IN ('text', 'file', 'image', 'system')),
+  message_type VARCHAR(20) DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'video', 'audio')),
+  file_id VARCHAR(21) REFERENCES ybira.files(id) ON DELETE SET NULL,
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE INDEX idx_messages_conversation ON guara.messages(conversation_id, created_at DESC);
+CREATE INDEX idx_participants_user ON guara.participants(user_id);
 ```
 
 ### Indexing Strategy
 
 **Performance Indexes:**
-- Users: `(community_id, email)`, `(community_id, role)`
-- Media: `(user_id, created_at DESC)`, `(community_id, mime_type)`
-- Messages: `(conversation_id, created_at DESC)`, `(user_id)`
 
-**Search Indexes:**
-- Full-text search on messages content
-- GIN indexes on JSONB metadata fields
+- Users: Community + email lookup, role-based queries
+- Files: User timeline, folder navigation
+- Photos: User timeline, album associations
+- Messages: Conversation threads, user participation
+
+**Search Indexes (Future):**
+
+- Full-text search on message content (GIN index)
+- File name search (trigram index)
 
 ## Deployment and Scalability
 
 ### Hardware Requirements
 
 **Phase 1 (MVP - 5 users):**
+
 - Raspberry Pi 5 (8GB RAM) or Mini PC N100
-- 1TB NVMe storage  
+- 1TB NVMe storage
 - 4-8W power consumption
 - Single instance deployment
 
 **Phase 2 (Growth - 20-30 users):**
+
 - Custom NAS or dedicated server
 - 16-32GB RAM, quad-core CPU
 - 4-8TB storage in RAID configuration
 - 30-50W power consumption
 
 **Phase 3 (Scale - 50+ users):**
+
 - High-end server (Ryzen 7, 64GB RAM)
 - 20TB+ storage with redundancy
 - Optional GPU for AI features
@@ -449,68 +787,150 @@ CREATE TABLE chat.messages (
 
 ### Deployment Strategy
 
-**Single Node:** All services on one machine with Docker Compose  
-**Process Supervision:** OTP supervision trees for fault tolerance  
-**Database:** PostgreSQL with automated backups  
-**Storage:** Local filesystem with planned Minio migration  
-**Monitoring:** Built-in health checks and metrics
+**Plug & Play Deployment:**
+
+- Docker Compose setup for one-command deployment
+- Automated database initialization and migrations
+- VPN configuration for secure remote access (handled by infrastructure team)
+- Reverse proxy with automatic TLS certificates
+
+**Single Node Architecture:**
+
+```
+┌─────────────────────────────────────┐
+│      Home Server / Mini PC          │
+├─────────────────────────────────────┤
+│  Docker Compose:                    │
+│  ├── taina (Phoenix app)            │
+│  ├── postgres (with all schemas)    │
+│  ├── nginx (reverse proxy)          │
+│  └── vpn-service (WireGuard/etc)    │
+└─────────────────────────────────────┘
+```
+
+**Process Supervision:** OTP supervision trees for fault tolerance
+**Database:** PostgreSQL with automated backups to local storage
+**Storage:** Local filesystem (configurable storage path)
+**Monitoring:** Phoenix LiveDashboard for system metrics
 
 ### Scaling Considerations
 
-**Vertical Scaling:** Increase hardware specs within community budget  
-**Storage Scaling:** Add drives to existing system  
-**Network Scaling:** Distributed deployment for multi-location communities  
-**Federation:** Future inter-community communication
+**MVP Timeline (1 Year):**
+
+- Installable instance setup on home servers
+- VPN infrastructure for remote access
+- PWA fully functional with all three services
+- Document preview support (PDF minimum)
+
+**Vertical Scaling:** Increase hardware specs within community budget
+**Storage Scaling:** Mount additional drives, adjust storage path
+**Future Extraction:** Services designed for future native app clients (APIs added when needed)
 
 ## Testing Strategy
 
 ### Test Pyramid Structure
 
-**Unit Tests:** Pure function testing with ExUnit  
-**Integration Tests:** Context interaction testing  
-**End-to-End Tests:** Full API flow testing
+**Unit Tests:** Pure business logic in service contexts
+**Integration Tests:** Service interactions (Jaci→Ybira, Guará→Ybira)
+**LiveView Tests:** User interactions and UI behavior
+**End-to-End Tests:** Critical user flows (upload photo, send message)
 
 ### Testing Approaches
 
-**Property-Based Testing:** StreamData for data generation  
-**Contract Testing:** GraphQL schema validation  
-**Performance Testing:** Load testing with realistic community size  
-**Security Testing:** Authentication and authorization validation
+**LiveView Testing:**
+
+```elixir
+test "upload photo successfully", %{conn: conn} do
+  {:ok, view, _html} = live(conn, "/photos")
+
+  file = %{
+    last_modified: 1_594_171_879_000,
+    name: "photo.jpg",
+    content: File.read!("test/fixtures/photo.jpg"),
+    size: 1_396,
+    type: "image/jpeg"
+  }
+
+  view
+  |> file_input(:photo_upload, :photos, [file])
+  |> render_upload(file)
+
+  assert has_element?(view, "#photo-#{photo.id}")
+end
+```
+
+**Context Testing:** Pure Elixir functions with ExUnit
+**Property-Based Testing:** StreamData for edge cases (file names, message content)
+**Performance Testing:** Load testing with realistic community size (5-50 users)
+**Security Testing:** Authorization checks in context functions
 
 ### Test Organization
 
 ```
 test/
-├── unit/
-│   ├── contexts/
-│   │   ├── auth/
-│   │   ├── media/
-│   │   └── chat/
-│   └── support/
+├── taina/
+│   ├── auth_test.exs
+│   ├── ybira_test.exs
+│   ├── jaci_test.exs
+│   └── guara_test.exs
+├── taina_web/
+│   ├── live/
+│   │   ├── ybira_live_test.exs
+│   │   ├── jaci_live_test.exs
+│   │   └── guara_live_test.exs
+│   └── controllers/
+│       └── session_controller_test.exs
 ├── integration/
-│   ├── api/
-│   └── events/
-└── e2e/
-    ├── user_flows/
-    └── admin_flows/
+│   └── service_integration_test.exs  # Jaci→Ybira, etc.
+└── support/
+    ├── fixtures.ex
+    └── conn_case.ex
 ```
 
-## Migration Path and Evolution
+## MVP Implementation Order (1-Year Timeline)
 
-### MVP Implementation Order
+### Phase 1: Foundation (Months 1-2)
 
-1. **Foundation:** Authentication, basic user management
-2. **Core Contexts:** Media (Jaci) and Communication (Guará) 
-3. **API Layer:** GraphQL schema and Phoenix Channels
-4. **Client Integration:** Mobile and web client APIs
-5. **Monitoring:** Basic health checks and logging
+1. **Phoenix Setup:** LiveView, Tailwind, asset pipeline
+2. **Authentication:** User/community models, session-based auth
+3. **Base UI:** Navigation shell, service switcher, responsive layout
+4. **PWA Basics:** Manifest, service worker, offline fallback
 
-### Future Architecture Evolution
+### Phase 2: Ybira - File System (Months 3-4)
 
-**Multi-tenancy:** Support for multiple communities per instance  
-**Federation:** Inter-community communication protocols  
-**Edge Computing:** CDN integration for media delivery  
-**AI Integration:** Local LLM for content processing
+1. **File Service:** Upload, storage, metadata
+2. **Folder Navigation:** Hierarchical browsing, breadcrumbs
+3. **File Operations:** CRUD, move, rename
+4. **Document Preview:** PDF viewer minimum, image preview
+
+### Phase 3: Jaci - Photos (Months 5-6)
+
+1. **Photo Service:** Integration with Ybira
+2. **Upload UI:** LiveView with progress tracking
+3. **Gallery Views:** Grid, timeline
+4. **Albums:** Basic album management
+
+### Phase 4: Guará - Messaging (Months 7-9)
+
+1. **Chat Service:** Conversations, messages
+2. **Real-time:** Phoenix Channels, presence
+3. **Message UI:** Thread view, composer
+4. **Attachments:** Text, images, videos, audio via Ybira
+
+### Phase 5: Polish & Deploy (Months 10-12)
+
+1. **Mobile Optimization:** Touch interactions, responsive design
+2. **Installation Flow:** Docker Compose, VPN setup
+3. **Testing:** End-to-end user flows
+4. **Documentation:** User guides, admin docs
+
+### Future Architecture Evolution (Post-MVP)
+
+**Native Apps:** Extract Jaci/Guará as native mobile apps with REST/GraphQL APIs
+**Electric SQL:** Client-side sync for offline-first messaging
+**Federation:** Inter-community communication
+**Additional Services:** Araci (streaming), Karai (monitoring), etc.
+**AI Features:** Local LLM for photo organization, smart search
 
 ## Risk Mitigation
 
@@ -530,10 +950,27 @@ test/
 
 ## Conclusion
 
-This RFC establishes a foundation for rapid MVP development while maintaining architectural integrity for future growth. The modular monolith approach balances simplicity with scalability, enabling community deployment on modest hardware while preserving expansion capabilities.
+This RFC establishes a pragmatic architecture for rapid MVP delivery through a PWA superapp approach. By consolidating three core services (Ybira, Jaci, Guará) into a single LiveView application, we dramatically simplify development while maintaining clear service boundaries for future extraction.
 
-The event-driven architecture supports real-time features essential for modern user experiences, while the schema-per-context database design enables clear ownership boundaries and future service extraction.
+**Key Architectural Decisions:**
 
-Implementation should prioritize the Authentication and Media contexts for initial community validation, followed by Communication features for daily user engagement. The monitoring and security contexts provide operational stability required for community trust.
+- **LiveView-only frontend** eliminates API serialization overhead and client-side state complexity
+- **Session-based auth** provides security without token management
+- **Separate PostgreSQL schemas** enable clean service boundaries and future extraction
+- **Direct service calls** keep complexity low while service APIs remain extraction-ready
+- **Minimal real-time infrastructure** (PubSub + Channels only where needed)
 
-Success metrics include sub-100ms API response times, 99.9% uptime for community instances, and seamless client application integration across the ecosystem.
+**MVP Success Criteria (1-Year):**
+
+- Installable Tainá instance on home servers with VPN
+- Fully functional PWA with mobile-first design
+- File system with iPad-like navigation + PDF preview
+- Photo gallery with upload and basic albums
+- Messaging with DM/groups, presence, and media attachments
+- Sub-100ms response times for typical operations
+- 99.5% uptime for community instances
+
+**Post-MVP Evolution:**
+The architecture supports extracting services as native apps by adding REST/GraphQL APIs without refactoring business logic. Service dependencies (Jaci→Ybira, Guará→Ybira) are explicitly designed for API extraction.
+
+Implementation prioritizes Ybira (foundation) → Jaci (photos) → Guará (messaging), ensuring each service is fully functional before moving to the next. This incremental approach delivers value early and validates architectural decisions with real usage.
