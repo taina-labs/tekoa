@@ -229,6 +229,178 @@ Taina.Ybira.list_files(folder_id, user)    # List files in folder
 - Document preview modal (PDF, images)
 - File actions (rename, move, delete)
 
+##### Ybira Internal Architecture
+
+**File Storage Structure:**
+
+Ybira stores files on the local filesystem with a deterministic path structure that ensures organization, prevents collisions, and supports future sharding:
+
+```
+/var/taina/storage/
+└── communities/
+    └── {community_id}/
+        ├── files/
+        │   └── {year}/
+        │       └── {month}/
+        │           └── {file_id}.{ext}    # Original file
+        ├── thumbnails/
+        │   └── {file_id}/
+        │       ├── small.webp   (200px)
+        │       ├── medium.webp  (800px)
+        │       └── large.webp   (1600px)
+        └── temp/
+            └── {upload_id}/     # Temporary upload staging
+```
+
+**Design Rationale:**
+
+- **Community isolation**: Top-level directory per community enables quota enforcement and backup granularity
+- **Date-based sharding**: Year/month folders prevent filesystem issues with large directories (10K+ files)
+- **Original file preservation**: Files stored with their original extension for direct serving
+- **Separate thumbnails**: Dedicated thumbnail directory enables efficient cleanup and regeneration
+- **Temp directory**: Isolated temporary storage for multi-part uploads and processing
+
+**Upload Pipeline:**
+
+```
+1. LiveView Upload Start
+   └─→ Phoenix.LiveView.allow_upload validates file type/size
+       └─→ Temp file created in /var/taina/storage/communities/{id}/temp/{upload_id}/
+
+2. Upload Progress
+   └─→ LiveView streams chunks via WebSocket
+       └─→ Progress updates sent to client
+
+3. Upload Complete (consume_uploaded_entries)
+   └─→ Taina.Ybira.upload/3 called with temp file path
+       ├─→ Validate: mime type, file size, virus scan (future)
+       ├─→ Generate: file_id (nanoid), final path
+       ├─→ Move: temp file → permanent location
+       ├─→ Extract: metadata (size, mime, hash for deduplication)
+       ├─→ Create: database record in ybira.files
+       └─→ Schedule: thumbnail generation (async)
+
+4. Post-Upload
+   └─→ Temp directory cleaned up
+   └─→ PubSub broadcast: {:file_uploaded, file_id} (for UI updates)
+```
+
+**File Serving Strategy:**
+
+For MVP, Ybira serves files directly through Phoenix:
+
+```elixir
+# TainaWeb.YbiraController
+def download(conn, %{"id" => file_id}) do
+  with {:ok, file} <- Ybira.get_file(file_id),
+       :ok <- Ybira.authorize(:read, file, current_user(conn)) do
+
+    conn
+    |> put_resp_header("content-disposition", ~s(attachment; filename="#{file.original_filename}"))
+    |> put_resp_header("cache-control", "private, max-age=3600")
+    |> send_file(200, file.file_path)
+  end
+end
+```
+
+**Future optimization**: Use Nginx X-Accel-Redirect for zero-copy file serving:
+
+```elixir
+conn
+|> put_resp_header("x-accel-redirect", "/internal/files/#{file.file_path}")
+|> send_resp(200, "")
+```
+
+**Storage Quota Enforcement:**
+
+Quota is tracked in real-time and enforced at upload:
+
+```elixir
+def upload(%User{community_id: cid} = user, file_params) do
+  with {:ok, community} <- Core.get_community(cid),
+       :ok <- check_quota(community, file_params.size) do
+    # Proceed with upload
+    # Update community.storage_used_bytes atomically
+  end
+end
+
+defp check_quota(%Community{storage_quota_gb: quota, storage_used_bytes: used}, file_size) do
+  quota_bytes = quota * 1_073_741_824  # GB to bytes
+  if used + file_size <= quota_bytes do
+    :ok
+  else
+    {:error, :quota_exceeded}
+  end
+end
+```
+
+**Quota calculation** is maintained via database trigger or periodic recalculation job.
+
+**Thumbnail Generation:**
+
+Thumbnails are generated asynchronously using Oban (background job processor):
+
+```elixir
+defmodule Taina.Ybira.Workers.ThumbnailWorker do
+  use Oban.Worker, queue: :media_processing
+
+  def perform(%{args: %{"file_id" => file_id}}) do
+    with {:ok, file} <- Ybira.get_file(file_id),
+         true <- image?(file.mime_type) do
+      generate_thumbnails(file)
+    end
+  end
+
+  defp generate_thumbnails(file) do
+    # Use ImageMagick/Vix for image processing
+    # Generate: small (200px), medium (800px), large (1600px)
+    # Save to thumbnails/{file_id}/ directory
+  end
+end
+```
+
+**Supported formats for thumbnails:**
+
+- Images: JPEG, PNG, HEIC, WebP, GIF
+- Documents: PDF (first page thumbnail)
+- Videos: Frame extraction at 0:00 (future)
+
+**File Cleanup Strategy:**
+
+Orphan file detection runs daily via Oban:
+
+```elixir
+# Find files in filesystem not in database
+filesystem_files = list_all_files_on_disk(community_id)
+database_files = Ybira.list_file_paths(community_id)
+
+orphans = filesystem_files -- database_files
+Enum.each(orphans, &File.rm/1)
+
+# Find database records without files (integrity check)
+missing = database_files -- filesystem_files
+Enum.each(missing, fn path ->
+  Logger.error("Missing file: #{path}")
+  # Alert admin or mark for investigation
+end)
+```
+
+**File deletion flow:**
+
+1. User deletes file → `Ybira.delete_file(file_id, user)`
+2. Database record marked as `deleted_at` (soft delete)
+3. Background job permanently removes file and thumbnails after 30 days
+4. Hard delete updates community storage quota
+
+**Deduplication (Future):**
+
+Files are hashed (SHA-256) on upload. If hash matches existing file:
+
+- Reference existing file_path
+- Create new database record with same file_path
+- Storage quota not increased (shared file)
+- Deletion only removes filesystem file when last reference deleted
+
 #### Photos Service (`Taina.Jaci`) **[Depends on Ybira]**
 
 **Purpose:** Photo and video gallery with organization
@@ -280,6 +452,183 @@ jaci.album_photos
 - Gallery grid with infinite scroll
 - Album management UI
 - Photo detail view with metadata
+
+##### Jaci Internal Architecture
+
+**Photo Processing Pipeline:**
+
+Jaci leverages Ybira for file storage but adds photo-specific processing:
+
+```
+1. User Upload (LiveView)
+   └─→ Taina.Ybira.upload(user, photo_file)
+       └─→ Returns: {:ok, %File{id: file_id, ...}}
+
+2. Photo Post-Processing (async Oban job)
+   ├─→ EXIF Extraction
+   │   ├─→ taken_at (DateTime from EXIF DateTimeOriginal)
+   │   ├─→ camera_info (make, model, lens)
+   │   ├─→ location (GPS coordinates if present)
+   │   └─→ dimensions (width x height)
+   ├─→ Orientation Fix
+   │   └─→ Auto-rotate based on EXIF orientation flag
+   ├─→ Thumbnail Generation (delegates to Ybira)
+   │   ├─→ small: 200px square (gallery grid)
+   │   ├─→ medium: 800px wide (detail view)
+   │   └─→ large: 1600px wide (fullscreen)
+   └─→ Create jaci.photos record
+       └─→ Links to ybira.files via file_id
+
+3. Gallery Display
+   └─→ Query jaci.photos with thumbnails
+       └─→ Lazy load images as user scrolls
+```
+
+**EXIF Extraction:**
+
+Uses ExifTool or pure Elixir library (Exiftool.ex):
+
+```elixir
+defmodule Taina.Jaci.PhotoProcessor do
+  def extract_metadata(file_path) do
+    case System.cmd("exiftool", ["-json", file_path]) do
+      {json, 0} ->
+        data = Jason.decode!(json) |> List.first()
+
+        %{
+          taken_at: parse_datetime(data["DateTimeOriginal"]),
+          camera: %{
+            make: data["Make"],
+            model: data["Model"],
+            lens: data["LensModel"]
+          },
+          location: parse_gps(data),
+          dimensions: %{
+            width: data["ImageWidth"],
+            height: data["ImageHeight"]
+          },
+          orientation: data["Orientation"]
+        }
+
+      _ -> {:error, :exif_extraction_failed}
+    end
+  end
+end
+```
+
+**Photo Timeline Strategy:**
+
+Gallery displays photos in reverse chronological order by `taken_at` (fallback to `created_at`):
+
+```elixir
+def list_photos_timeline(user, opts \\ []) do
+  from(p in Photo,
+    where: p.user_id == ^user.id or p.community_id == ^user.community_id,
+    order_by: [desc: coalesce(p.taken_at, p.created_at)],
+    preload: [:file],
+    limit: ^opts[:limit] || 50,
+    offset: ^opts[:offset] || 0
+  )
+  |> Repo.all()
+end
+```
+
+**Infinite Scroll Implementation:**
+
+LiveView uses `phx-hook` for scroll detection:
+
+```javascript
+// assets/js/hooks.js
+Hooks.InfiniteScroll = {
+  mounted() {
+    this.observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        this.pushEvent("load-more", {});
+      }
+    });
+    this.observer.observe(this.el);
+  },
+  destroyed() {
+    this.observer.disconnect();
+  },
+};
+```
+
+```elixir
+# In LiveView
+def handle_event("load-more", _params, socket) do
+  next_offset = socket.assigns.offset + 50
+  more_photos = Jaci.list_photos_timeline(socket.assigns.current_user, offset: next_offset)
+
+  {:noreply,
+   socket
+   |> update(:photos, &(&1 ++ more_photos))
+   |> assign(:offset, next_offset)}
+end
+```
+
+**Format Handling:**
+
+HEIC (iOS photos) converted to JPEG for browser compatibility:
+
+```elixir
+defmodule Taina.Jaci.Converters.HeicConverter do
+  def convert_if_needed(%File{mime_type: "image/heic"} = file) do
+    output_path = String.replace(file.file_path, ".heic", ".jpg")
+
+    System.cmd("heif-convert", [file.file_path, output_path])
+
+    # Update file record with new path and mime_type
+    Ybira.update_file(file, %{
+      file_path: output_path,
+      mime_type: "image/jpeg"
+    })
+  end
+
+  def convert_if_needed(file), do: {:ok, file}
+end
+```
+
+**Dependencies:** Requires `libheif` on server for HEIC support.
+
+**Album Performance:**
+
+Album photos use position-based ordering for custom arrangements:
+
+```elixir
+def list_album_photos(album_id) do
+  from(ap in AlbumPhoto,
+    where: ap.album_id == ^album_id,
+    order_by: ap.position,
+    preload: [photo: :file]
+  )
+  |> Repo.all()
+end
+
+def reorder_photos(album_id, photo_ids) do
+  Enum.with_index(photo_ids, fn photo_id, index ->
+    from(ap in AlbumPhoto,
+      where: ap.album_id == ^album_id and ap.photo_id == ^photo_id
+    )
+    |> Repo.update_all(set: [position: index])
+  end)
+end
+```
+
+**Gallery View Modes:**
+
+- **Grid View:** Thumbnails in responsive grid (2-6 columns based on screen size)
+- **Timeline View:** Photos grouped by date (Today, Yesterday, Last Week, etc.)
+- **Map View (Future):** Photos with GPS data displayed on map
+
+**Memory Optimization:**
+
+Large galleries use virtual scrolling to render only visible photos:
+
+- Render 50 photos initially
+- Load next 50 as user scrolls (intersection observer)
+- Unload photos more than 200 items away from viewport
+- Thumbnails cached with HTTP headers: `Cache-Control: public, max-age=31536000`
 
 #### Messaging Service (`Taina.Guara`) **[Depends on Ybira]**
 
@@ -344,6 +693,255 @@ guara.messages
 - Message thread with infinite scroll
 - Message composer with attachment support
 - Real-time message updates via PubSub
+
+##### Guará Internal Architecture
+
+**Message Delivery Flow:**
+
+Guará uses a hybrid approach: LiveView for UI, Phoenix Channels for real-time features:
+
+```
+1. User Sends Message (LiveView event)
+   └─→ handle_event("send_message", %{"content" => text}, socket)
+       └─→ Taina.Guara.send_message(conversation_id, user, %{content: text})
+           ├─→ Validate: user is participant, content not empty
+           ├─→ Insert: guara.messages record
+           ├─→ Broadcast via PubSub: {:new_message, message}
+           │   └─→ All LiveViews subscribed to conversation update UI
+           └─→ Broadcast via Channel: "new_msg" event
+               └─→ Online users see typing indicator stop
+
+2. Message with Attachment
+   ├─→ User uploads file via Ybira
+   ├─→ Send message with file_id
+   └─→ Recipients see inline attachment (image preview, video player, etc.)
+
+3. Unread Count Update
+   └─→ PubSub broadcast to user:{recipient_id}
+       └─→ Conversation list LiveView updates badge count
+```
+
+**Phoenix Channels Integration:**
+
+Channels handle presence and ephemeral features (typing indicators), while LiveView handles message persistence:
+
+```elixir
+# lib/taina_web/channels/conversation_channel.ex
+defmodule TainaWeb.ConversationChannel do
+  use Phoenix.Channel
+  alias Taina.Guara.Presence
+
+  def join("conversation:" <> conversation_id, _params, socket) do
+    send(self(), :after_join)
+    {:ok, assign(socket, :conversation_id, conversation_id)}
+  end
+
+  def handle_info(:after_join, socket) do
+    # Track user presence
+    {:ok, _} = Presence.track(socket, socket.assigns.user_id, %{
+      online_at: DateTime.utc_now(),
+      typing: false
+    })
+
+    push(socket, "presence_state", Presence.list(socket))
+    {:noreply, socket}
+  end
+
+  def handle_in("typing:start", _payload, socket) do
+    # Broadcast typing indicator to other participants
+    Presence.update(socket, socket.assigns.user_id, %{typing: true})
+    {:noreply, socket}
+  end
+
+  def handle_in("typing:stop", _payload, socket) do
+    Presence.update(socket, socket.assigns.user_id, %{typing: false})
+    {:noreply, socket}
+  end
+end
+```
+
+**LiveView + Channel Coordination:**
+
+LiveView mounts channel for real-time features but handles message rendering:
+
+```elixir
+# In GuaraLive.ConversationShow
+def mount(%{"id" => conversation_id}, _session, socket) do
+  if connected?(socket) do
+    # Subscribe to message broadcasts via PubSub
+    Phoenix.PubSub.subscribe(Taina.PubSub, "conversation:#{conversation_id}")
+
+    # Join Channel for presence (client-side via JS hook)
+    # push_event sends instruction to JavaScript hook to join channel
+  end
+
+  messages = Guara.list_messages(conversation_id, limit: 50)
+
+  {:ok,
+   socket
+   |> assign(:conversation_id, conversation_id)
+   |> assign(:messages, messages)
+   |> assign(:typing_users, [])}
+end
+
+def handle_info({:new_message, message}, socket) do
+  # Real-time message arrival via PubSub
+  {:noreply, update(socket, :messages, &[message | &1])}
+end
+
+def handle_info({:typing, %{user_id: user_id, typing: true}}, socket) do
+  # Typing indicator from Channel presence
+  {:noreply, update(socket, :typing_users, &[user_id | &1])}
+end
+```
+
+**Why Both PubSub and Channels?**
+
+- **PubSub**: Persistent message delivery, cross-LiveView updates, server-side only
+- **Channels**: Ephemeral presence, typing indicators, bidirectional client events
+
+**Message History Pagination:**
+
+Conversation thread uses reverse infinite scroll (load older messages upward):
+
+```elixir
+def list_messages(conversation_id, opts \\ []) do
+  from(m in Message,
+    where: m.conversation_id == ^conversation_id,
+    order_by: [desc: m.created_at],
+    limit: ^opts[:limit] || 50,
+    offset: ^opts[:offset] || 0,
+    preload: [:user, :file]
+  )
+  |> Repo.all()
+  |> Enum.reverse()  # Most recent at bottom
+end
+```
+
+**Unread Count Calculation:**
+
+Efficient unread tracking via `last_read_at`:
+
+```elixir
+def unread_count(conversation_id, user_id) do
+  participant = get_participant(conversation_id, user_id)
+
+  from(m in Message,
+    where: m.conversation_id == ^conversation_id,
+    where: m.created_at > ^participant.last_read_at,
+    where: m.user_id != ^user_id,
+    select: count(m.id)
+  )
+  |> Repo.one()
+end
+
+def mark_as_read(conversation_id, user_id) do
+  from(p in Participant,
+    where: p.conversation_id == ^conversation_id and p.user_id == ^user_id
+  )
+  |> Repo.update_all(set: [last_read_at: DateTime.utc_now()])
+
+  # Broadcast unread count update
+  Phoenix.PubSub.broadcast(
+    Taina.PubSub,
+    "user:#{user_id}",
+    {:unread_count_updated, conversation_id, 0}
+  )
+end
+```
+
+**Attachment Rendering:**
+
+Messages with attachments render inline based on file type:
+
+```elixir
+# In message component template
+<%= if @message.file_id do %>
+  <%= case @message.message_type do %>
+    <% :image -> %>
+      <img src={Routes.ybira_path(@socket, :download, @message.file_id)}
+           class="max-w-md rounded-lg" />
+
+    <% :video -> %>
+      <video controls class="max-w-md">
+        <source src={Routes.ybira_path(@socket, :download, @message.file_id)} />
+      </video>
+
+    <% :audio -> %>
+      <audio controls>
+        <source src={Routes.ybira_path(@socket, :download, @message.file_id)} />
+      </audio>
+
+    <% _ -> %>
+      <a href={Routes.ybira_path(@socket, :download, @message.file_id)}
+         class="flex items-center gap-2 p-2 bg-gray-100 rounded">
+        <span class="icon-file"></span>
+        <%= @message.file.original_filename %>
+      </a>
+  <% end %>
+<% end %>
+```
+
+**Message Delivery Guarantees:**
+
+For MVP, Guará provides at-least-once delivery semantics:
+
+- Message saved to database before broadcast (durability)
+- PubSub broadcast is best-effort (if LiveView disconnected, message appears on reconnect)
+- No message queue or retry logic needed for community-scale deployment
+- Future: Add delivery receipts and read receipts for group chats
+
+**Presence Tracking:**
+
+Phoenix.Presence automatically handles online/offline status:
+
+```elixir
+# In conversation LiveView
+def handle_info(%{event: "presence_diff", payload: diff}, socket) do
+  online_users =
+    Presence.list("conversation:#{socket.assigns.conversation_id}")
+    |> Map.keys()
+
+  {:noreply, assign(socket, :online_users, online_users)}
+end
+```
+
+**Performance Considerations:**
+
+- Conversations limited to 100 participants (community scale)
+- Message history loaded in 50-message chunks
+- Presence tracked per-conversation (not global to avoid overhead)
+- Typing indicators debounced client-side (300ms) to reduce broadcasts
+
+**Direct Message (DM) Optimization:**
+
+DM conversations are automatically created on first message:
+
+```elixir
+def get_or_create_dm(user_id, recipient_id) do
+  case find_dm_conversation(user_id, recipient_id) do
+    nil ->
+      create_conversation(%{
+        conversation_type: :direct,
+        created_by: user_id,
+        participant_ids: [user_id, recipient_id]
+      })
+
+    conversation -> {:ok, conversation}
+  end
+end
+
+defp find_dm_conversation(user_id, recipient_id) do
+  from(c in Conversation,
+    join: p1 in Participant, on: p1.conversation_id == c.id and p1.user_id == ^user_id,
+    join: p2 in Participant, on: p2.conversation_id == c.id and p2.user_id == ^recipient_id,
+    where: c.conversation_type == :direct,
+    having: count(p.user_id) == 2,
+    select: c
+  )
+  |> Repo.one()
+end
+```
 
 ### Post-MVP Services (Deferred)
 
@@ -601,6 +1199,487 @@ defp authorize(_, _, _), do: {:error, :unauthorized}
 **Encryption at Rest:** Optional database/filesystem encryption at deployment level
 **Encryption in Transit:** TLS 1.3 for all communications (handled by reverse proxy)
 **Privacy:** Community data isolation via community_id checks
+
+## Performance & Caching Architecture
+
+### ETS Caching Strategy
+
+ETS (Erlang Term Storage) provides in-memory caching for frequently accessed data:
+
+**What to Cache:**
+
+```elixir
+# User sessions (avoid DB lookup on every request)
+:ets.new(:user_sessions, [:set, :public, :named_table])
+
+# Community settings (read-heavy, rarely change)
+:ets.new(:community_settings, [:set, :public, :named_table])
+
+# File metadata (avoid filesystem stat calls)
+:ets.new(:file_metadata, [:set, :public, :named_table])
+```
+
+**Cache Invalidation:**
+
+```elixir
+defmodule Taina.Core.CommunityCache do
+  def get(community_id) do
+    case :ets.lookup(:community_settings, community_id) do
+      [{^community_id, settings}] -> {:ok, settings}
+      [] -> load_and_cache(community_id)
+    end
+  end
+
+  defp load_and_cache(community_id) do
+    case Core.get_community(community_id) do
+      {:ok, community} ->
+        :ets.insert(:community_settings, {community_id, community})
+        {:ok, community}
+      error -> error
+    end
+  end
+
+  def invalidate(community_id) do
+    :ets.delete(:community_settings, community_id)
+    # Broadcast invalidation to all nodes (future clustering)
+    Phoenix.PubSub.broadcast(Taina.PubSub, "cache:invalidate", {:community, community_id})
+  end
+end
+```
+
+**TTL Strategy (Future):**
+
+For MVP, cache invalidation is manual. Future: Add TTL with periodic cleanup:
+
+```elixir
+# Store with timestamp
+:ets.insert(:cache, {key, value, System.monotonic_time(:second)})
+
+# Periodic cleanup via Oban
+defmodule Taina.Workers.CacheCleanup do
+  def perform(_job) do
+    now = System.monotonic_time(:second)
+    ttl = 3600  # 1 hour
+
+    :ets.select_delete(:cache, [
+      {{:_, :_, :"$1"}, [{:<, :"$1", now - ttl}], [true]}
+    ])
+  end
+end
+```
+
+### Database Query Optimization
+
+**Index Usage:**
+
+All queries leverage indexes defined in schema design:
+
+```elixir
+# GOOD: Uses idx_files_user
+def list_user_files(user_id) do
+  from(f in File,
+    where: f.user_id == ^user_id,
+    order_by: [desc: f.created_at]
+  )
+end
+
+# BAD: Full table scan
+def list_files_by_original_filename(filename) do
+  from(f in File,
+    where: f.original_filename == ^filename
+  )
+end
+# Fix: Add GIN index for trigram search if filename search needed
+```
+
+**N+1 Prevention:**
+
+Always preload associations in context layer:
+
+```elixir
+# GOOD: Single query with preload
+def list_photos(user_id) do
+  from(p in Photo,
+    where: p.user_id == ^user_id,
+    preload: [:file, :user]
+  )
+  |> Repo.all()
+end
+
+# BAD: N+1 queries (1 for photos, N for files)
+def list_photos_bad(user_id) do
+  from(p in Photo, where: p.user_id == ^user_id)
+  |> Repo.all()
+  # File loaded lazily for each photo
+end
+```
+
+**Query Timeouts:**
+
+Set timeouts for all queries to prevent long-running operations:
+
+```elixir
+Repo.all(query, timeout: 5_000)  # 5 second timeout
+```
+
+### File Serving Performance
+
+**Phoenix send_file Strategy:**
+
+MVP serves files via Phoenix with caching headers:
+
+```elixir
+def download(conn, %{"id" => file_id}) do
+  with {:ok, file} <- Ybira.get_file(file_id),
+       :ok <- authorize(:read, file, current_user(conn)) do
+    conn
+    |> put_resp_header("cache-control", "private, max-age=31536000")
+    |> put_resp_header("content-type", file.mime_type)
+    |> put_resp_header("etag", file.etag)
+    |> send_file(200, file.file_path)
+  end
+end
+```
+
+**Range Request Support:**
+
+Enable resumable downloads and video streaming:
+
+```elixir
+def download(conn, %{"id" => file_id}) do
+  # ... authorization ...
+
+  case get_req_header(conn, "range") do
+    ["bytes=" <> range] ->
+      send_file_range(conn, file.file_path, range)
+    _ ->
+      send_file(conn, 200, file.file_path)
+  end
+end
+```
+
+**Nginx X-Accel-Redirect (Future Optimization):**
+
+For high-traffic deployments, offload file serving to Nginx:
+
+```nginx
+# nginx.conf
+location /internal/files/ {
+  internal;  # Only accessible via X-Accel-Redirect
+  alias /var/taina/storage/;
+}
+```
+
+```elixir
+def download(conn, %{"id" => file_id}) do
+  # ... authorization ...
+
+  conn
+  |> put_resp_header("x-accel-redirect", "/internal/files/#{relative_path(file)}")
+  |> put_resp_header("content-type", file.mime_type)
+  |> send_resp(200, "")
+end
+```
+
+**Benefits:** Zero-copy file serving, frees Phoenix processes immediately.
+
+### Thumbnail Caching
+
+**HTTP Cache Headers:**
+
+Thumbnails are immutable (file_id never changes):
+
+```elixir
+def thumbnail(conn, %{"file_id" => file_id, "size" => size}) do
+  thumbnail_path = "/var/taina/storage/.../thumbnails/#{file_id}/#{size}.webp"
+
+  conn
+  |> put_resp_header("cache-control", "public, max-age=31536000, immutable")
+  |> put_resp_header("content-type", "image/webp")
+  |> send_file(200, thumbnail_path)
+end
+```
+
+**CDN-Ready:**
+
+Thumbnails can be served via CDN (Cloudflare, BunnyCDN) for distributed communities:
+
+- Set CORS headers for cross-origin access
+- Use deterministic URLs: `/thumbnails/{file_id}/{size}.webp`
+- CDN respects cache headers (1 year cache)
+
+### LiveView Performance
+
+**Temporary Assigns:**
+
+Prevent large data from being stored in LiveView state:
+
+```elixir
+def mount(_params, _session, socket) do
+  {:ok,
+   socket
+   |> assign(:photos, list_photos())
+   |> assign(:current_user, user)
+   |> temporary_assigns([photos: []])}  # Photos not serialized to client
+end
+```
+
+**Stream Collections (Phoenix 1.7+):**
+
+For large lists, use streams instead of assigns:
+
+```elixir
+def mount(_params, _session, socket) do
+  {:ok,
+   socket
+   |> stream(:photos, list_photos())}
+end
+
+def handle_event("load-more", _params, socket) do
+  more_photos = list_photos(offset: socket.assigns.offset + 50)
+
+  {:noreply, stream(socket, :photos, more_photos)}
+end
+```
+
+**Debouncing User Input:**
+
+Prevent excessive server calls for search/filter inputs:
+
+```javascript
+// assets/js/app.js
+let searchTimeout;
+input.addEventListener("input", (e) => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    liveSocket.push("search", { query: e.target.value });
+  }, 300);
+});
+```
+
+### Connection Pooling
+
+**Ecto Connection Pool:**
+
+Configure pool size based on hardware:
+
+```elixir
+# config/prod.exs
+config :taina, Taina.Repo,
+  pool_size: 10,  # 2x CPU cores recommended
+  queue_target: 50,  # Queue wait time (ms)
+  queue_interval: 1000  # Check interval (ms)
+```
+
+**Phoenix Endpoint Pool:**
+
+```elixir
+config :taina, TainaWeb.Endpoint,
+  http: [
+    port: 4000,
+    transport_options: [num_acceptors: 10]
+  ]
+```
+
+### Monitoring & Metrics
+
+**Phoenix LiveDashboard:**
+
+Built-in monitoring for MVP:
+
+```elixir
+# router.ex
+import Phoenix.LiveDashboard.Router
+
+scope "/" do
+  pipe_through [:browser, :require_admin]
+
+  live_dashboard "/admin/dashboard",
+    metrics: TainaWeb.Telemetry,
+    ecto_repos: [Taina.Repo]
+end
+```
+
+**Custom Telemetry Metrics:**
+
+```elixir
+defmodule TainaWeb.Telemetry do
+  def metrics do
+    [
+      # Phoenix Metrics
+      summary("phoenix.router_dispatch.stop.duration"),
+      summary("phoenix.endpoint.stop.duration"),
+
+      # Ecto Metrics
+      summary("taina.repo.query.total_time"),
+      counter("taina.repo.query.count"),
+
+      # Custom Metrics
+      counter("taina.ybira.uploads.count"),
+      summary("taina.ybira.uploads.duration"),
+      last_value("taina.storage.used_bytes")
+    ]
+  end
+end
+```
+
+### Performance Targets (MVP)
+
+**Response Times:**
+
+- File upload: <2s for 10MB file (depends on network)
+- Photo gallery load: <500ms (50 thumbnails)
+- Message send: <100ms (write + broadcast)
+- File download start: <50ms (authorization + headers)
+
+**Resource Limits:**
+
+- PostgreSQL connections: 10-20 (community scale)
+- LiveView processes: 100 concurrent users max (Raspberry Pi 5)
+- File uploads: Max 100MB per file, 1GB total per hour per user
+- Message attachments: Max 25MB per attachment
+
+## Backup & Recovery Architecture
+
+### Backup Strategy
+
+**What to Backup:**
+
+1. **PostgreSQL Database:** All schemas (public, ybira, jaci, guara)
+2. **File Storage:** `/var/taina/storage/communities/{id}/files/`
+3. **Thumbnails:** `/var/taina/storage/communities/{id}/thumbnails/` (optional, can regenerate)
+4. **Configuration:** Docker Compose files, environment variables
+
+**Backup Frequency:**
+
+- **Database:** Daily full backup + continuous WAL archiving (future)
+- **Files:** Daily incremental backup (rsync to external drive)
+- **Configuration:** Backup on change (manual or via git)
+
+**Automated Backup Script:**
+
+```bash
+#!/bin/bash
+# /opt/taina/backup.sh
+
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/mnt/backup/taina"
+COMMUNITY_ID="your_community_id"
+
+# 1. PostgreSQL Backup
+docker exec taina-db pg_dump -U postgres taina_production \
+  | gzip > "$BACKUP_DIR/db_$DATE.sql.gz"
+
+# 2. File Storage Backup (incremental)
+rsync -avz --delete \
+  /var/taina/storage/communities/$COMMUNITY_ID/ \
+  $BACKUP_DIR/files/
+
+# 3. Retain last 30 days of backups
+find $BACKUP_DIR -name "db_*.sql.gz" -mtime +30 -delete
+
+echo "Backup completed: $DATE"
+```
+
+**Scheduled via Cron:**
+
+```cron
+# Backup daily at 2 AM
+0 2 * * * /opt/taina/backup.sh >> /var/log/taina-backup.log 2>&1
+```
+
+### Restore Procedures
+
+**Database Restore:**
+
+```bash
+# 1. Stop Tainá application
+docker compose down
+
+# 2. Restore PostgreSQL dump
+gunzip -c db_20250101_020000.sql.gz | \
+  docker exec -i taina-db psql -U postgres taina_production
+
+# 3. Restart application
+docker compose up -d
+```
+
+**File Storage Restore:**
+
+```bash
+# Restore files from backup
+rsync -avz --delete \
+  /mnt/backup/taina/files/ \
+  /var/taina/storage/communities/$COMMUNITY_ID/
+```
+
+**Full System Restore:**
+
+1. Install fresh Tainá instance on new hardware
+2. Restore configuration files and `.env`
+3. Restore database dump
+4. Restore file storage
+5. Regenerate thumbnails (optional): `mix taina.thumbnails.regenerate`
+
+### Disaster Recovery
+
+**Recovery Time Objective (RTO):** 4 hours (time to restore service)
+**Recovery Point Objective (RPO):** 24 hours (acceptable data loss)
+
+**Disaster Scenarios:**
+
+1. **Disk Failure:**
+   - If RAID: Replace disk, rebuild array
+   - If single disk: Restore from backup to new disk
+   - RTO: 2-4 hours
+
+2. **Database Corruption:**
+   - Restore from last known good backup
+   - Potential data loss: Last 24 hours
+   - RTO: 1 hour
+
+3. **Complete Hardware Failure:**
+   - Deploy Tainá to new hardware
+   - Restore from remote backup
+   - RTO: 4-8 hours
+
+4. **Accidental Data Deletion:**
+   - Soft delete (30-day retention) allows recovery
+   - Hard delete: Restore specific files from backup
+   - RTO: 1-2 hours
+
+**Backup Storage Recommendations:**
+
+- **Primary:** External USB drive (encrypted)
+- **Secondary:** NAS or cloud storage (Backblaze B2, rsync.net)
+- **Geographic:** Keep off-site backup for physical disasters
+
+### Data Integrity Checks
+
+**Scheduled Integrity Verification:**
+
+```elixir
+defmodule Taina.Workers.IntegrityCheck do
+  use Oban.Worker, queue: :maintenance
+
+  def perform(_job) do
+    # Check database-filesystem consistency
+    check_file_integrity()
+    check_orphan_files()
+    check_missing_files()
+  end
+
+  defp check_file_integrity do
+    Ybira.list_all_files()
+    |> Enum.each(fn file ->
+      unless File.exists?(file.file_path) do
+        Logger.error("Missing file: #{file.id} - #{file.file_path}")
+        Taina.Alerts.notify_admin(:missing_file, file)
+      end
+    end)
+  end
+end
+```
 
 ## Database Schema Design (MVP)
 
