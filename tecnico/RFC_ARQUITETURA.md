@@ -9,7 +9,18 @@
 
 This RFC defines the technical architecture for Tainá, a community-owned digital infrastructure platform delivered as a Progressive Web Application (PWA). Tainá is a superapp monolith that combines multiple services (messaging, photos, file storage) into a single, cohesive user experience, enabling communities to self-host their digital services with complete data sovereignty.
 
+**Core Philosophy: Technology for Liberation, Not Capture**
+
+Tainá is fundamentally different from mainstream platforms. We design for **less usage, not more**. This is a tool for digital sovereignty and community empowerment - not a product engineered to capture attention or maximize engagement metrics. Our default settings promote healthy technology use: notifications off by default, no algorithmic manipulation, no dark patterns to keep users "engaged."
+
 The architecture prioritizes rapid MVP development through a mobile-first PWA approach while maintaining clear service boundaries for future client extraction. Built as a modular monolith in Elixir/Phoenix with LiveView, Tainá delivers real-time, app-like experiences without the complexity of separate native applications or API layers.
+
+**Design Principles for Sovereign Communities:**
+- Default to privacy and minimalism (notifications disabled by default)
+- No distinction between "DM" and "group" - flexibility over rigid categorization
+- Community control over all data and infrastructure
+- Open-source, auditable, forkable
+- Designed for dissenting communities and digital resistance
 
 ## System Overview
 
@@ -284,6 +295,111 @@ Ybira stores files on the local filesystem with a deterministic path structure t
    └─→ Temp directory cleaned up
    └─→ PubSub broadcast: {:file_uploaded, file_id} (for UI updates)
 ```
+
+**File Quarantine and Validation:**
+
+For security and data integrity, all uploads go through a quarantine process before being moved to production storage:
+
+```
+1. Upload to Quarantine
+   └─→ File lands in /var/taina/storage/communities/{id}/temp/{upload_id}/
+       └─→ Isolated from production files
+
+2. Validation Pipeline (Sequential)
+   ├─→ MIME Type Validation
+   │   ├─→ Check actual file content (not just extension)
+   │   ├─→ Use libmagic to detect real MIME type
+   │   └─→ Reject if mismatch with declared type
+   │
+   ├─→ Virus Scanning (ClamAV - open-source)
+   │   ├─→ Scan file with freshclam signatures
+   │   ├─→ Quarantine indefinitely if malware detected
+   │   └─→ Alert admin via notification system
+   │
+   ├─→ File Size Validation
+   │   ├─→ Verify against quota limits
+   │   └─→ Check community storage availability
+   │
+   └─→ Content-Specific Validation
+       ├─→ Images: Check valid format, dimensions
+       ├─→ Videos: Verify codec, duration limits
+       └─→ Documents: PDF validation
+
+3. Move to Production
+   └─→ Only after ALL checks pass
+       └─→ Move from temp/ to files/{year}/{month}/
+           └─→ Create database record
+               └─→ PubSub broadcast success
+
+4. Quarantine Retention
+   └─→ Failed files kept in temp/ for 7 days (admin review)
+   └─→ Automatic cleanup after retention period
+```
+
+**ClamAV Integration:**
+
+```elixir
+defmodule Taina.Ybira.Validators.VirusScanner do
+  @moduledoc """
+  Integração com ClamAV (open-source antivírus) para escanear arquivos
+  antes de movê-los para armazenamento de produção.
+  """
+
+  def scan_file(file_path) do
+    case System.cmd("clamdscan", ["--no-summary", file_path]) do
+      {_, 0} ->
+        {:ok, :clean}
+
+      {output, 1} ->
+        Logger.error("Malware detected: #{output}")
+        {:error, :malware_detected}
+
+      {_, _} ->
+        # ClamAV error (daemon not running, etc)
+        # Fail safe: reject upload
+        {:error, :scan_failed}
+    end
+  end
+end
+```
+
+**MIME Type Detection:**
+
+```elixir
+defmodule Taina.Ybira.Validators.MimeValidator do
+  def validate_mime(file_path, declared_mime) do
+    # Use libmagic to detect actual file type
+    actual_mime =
+      case System.cmd("file", ["--mime-type", "-b", file_path]) do
+        {mime, 0} -> String.trim(mime)
+        _ -> nil
+      end
+
+    cond do
+      is_nil(actual_mime) ->
+        {:error, :mime_detection_failed}
+
+      actual_mime != declared_mime ->
+        Logger.warn("MIME mismatch: declared=#{declared_mime}, actual=#{actual_mime}")
+        {:error, :mime_mismatch}
+
+      true ->
+        {:ok, actual_mime}
+    end
+  end
+end
+```
+
+**Quarantine Monitoring Dashboard:**
+
+Admins can view quarantined files via LiveDashboard:
+
+- Files in quarantine (pending scan)
+- Failed uploads with reason (malware, size, mime mismatch)
+- Scan statistics (files scanned, threats detected)
+- Manual override for false positives
+
+**Important:** All security tools (ClamAV, libmagic) are open-source and free, aligning with Tainá's philosophy of using only OSS solutions.
 
 **File Serving Strategy:**
 
@@ -983,6 +1099,159 @@ Future Schemas (Post-MVP):
 - Separate permissions per schema if needed
 - Clear ownership of tables
 - Migration organization matches service organization
+
+#### Row-Level Security (RLS) for Multi-Tenancy
+
+PostgreSQL Row-Level Security (RLS) provides automatic data isolation between communities (Tekoas) at the database level. This prevents data leaks between communities even if application code has bugs.
+
+**How RLS Works:**
+
+```sql
+-- Enable RLS on all community-scoped tables
+ALTER TABLE ybira.files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE jaci.photos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE guara.chats ENABLE ROW LEVEL SECURITY;
+
+-- Create policy: users can only access data from their community
+CREATE POLICY community_isolation ON ybira.files
+  USING (community_id = current_setting('app.current_tekoa_id')::VARCHAR);
+
+CREATE POLICY community_isolation ON jaci.photos
+  USING (community_id = current_setting('app.current_tekoa_id')::VARCHAR);
+
+CREATE POLICY community_isolation ON guara.chats
+  USING (community_id = current_setting('app.current_tekoa_id')::VARCHAR);
+```
+
+**Application Integration:**
+
+In every database connection, set the current community context:
+
+```elixir
+defmodule Taina.Repo do
+  use Ecto.Repo,
+    otp_app: :taina,
+    adapter: Ecto.Adapters.Postgres
+
+  @impl true
+  def prepare_query(_operation, query, opts) do
+    cond do
+      opts[:skip_tekoa_id] || opts[:schema_migration] ->
+        # Skip RLS for migrations or admin queries
+        {query, opts}
+
+      tekoa_id = opts[:tekoa_id] ->
+        # Set RLS context for all queries in this connection
+        {query, opts}
+        |> set_tekoa_context(tekoa_id)
+
+      true ->
+        raise "Missing tekoa_id for query! All queries must be scoped to a community."
+    end
+  end
+
+  defp set_tekoa_context({query, opts}, tekoa_id) do
+    query_with_rls = """
+    SET LOCAL app.current_tekoa_id = '#{tekoa_id}';
+    #{query}
+    """
+    {query_with_rls, opts}
+  end
+end
+```
+
+**LiveView Integration:**
+
+Every LiveView automatically sets the RLS context from the current user:
+
+```elixir
+defmodule TainaWeb.UserAuth do
+  def on_mount(:require_authenticated_user, _params, session, socket) do
+    case get_user_from_session(session) do
+      {:ok, user} ->
+        # Set RLS context for all database queries in this LiveView
+        Repo.put_dynamic_repo(Taina.Repo, tekoa_id: user.tekoa_id)
+
+        {:cont, assign(socket, current_user: user, current_tekoa_id: user.tekoa_id)}
+
+      {:error, _} ->
+        {:halt, redirect(socket, to: "/auth/login")}
+    end
+  end
+end
+```
+
+**Benefits of RLS:**
+
+1. **Defense in Depth:** Even if application code forgets to filter by `community_id`, database blocks cross-community access
+2. **Zero Trust Architecture:** Database enforces isolation, application can't bypass it
+3. **Simplified Queries:** No need to manually add `WHERE community_id = ?` to every query
+4. **Audit Trail:** RLS violations logged automatically by PostgreSQL
+5. **Migration Safety:** Adding new tables automatically inherits community isolation
+
+**Example Query Comparison:**
+
+```elixir
+# WITHOUT RLS (manual filtering required - error-prone!)
+def list_files(user) do
+  from(f in File,
+    where: f.community_id == ^user.community_id,  # Easy to forget!
+    select: f
+  )
+  |> Repo.all()
+end
+
+# WITH RLS (automatic filtering)
+def list_files(_user) do
+  from(f in File, select: f)
+  |> Repo.all()  # RLS automatically filters by community_id
+end
+```
+
+**Performance Considerations:**
+
+- RLS policies use PostgreSQL indexes (no performance penalty)
+- `community_id` indexes critical for RLS performance
+- Connection pooling maintains RLS context per connection
+- Admin queries can bypass RLS with `skip_tekoa_id: true`
+
+**Testing RLS:**
+
+```elixir
+defmodule Taina.YbiraTest do
+  use Taina.DataCase
+
+  test "RLS prevents cross-community data access" do
+    tekoa1 = insert(:tekoa)
+    tekoa2 = insert(:tekoa)
+    user1 = insert(:ava, tekoa: tekoa1)
+    user2 = insert(:ava, tekoa: tekoa2)
+    file1 = insert(:file, ava: user1, tekoa: tekoa1)
+    _file2 = insert(:file, ava: user2, tekoa: tekoa2)
+
+    # Set RLS context to tekoa1
+    Repo.put_dynamic_repo(Taina.Repo, tekoa_id: tekoa1.id)
+
+    # Should only see files from tekoa1
+    files = Ybira.list_files()
+    assert length(files) == 1
+    assert hd(files).id == file1.id
+  end
+end
+```
+
+**Admin Bypass:**
+
+For administrative operations that need cross-community access:
+
+```elixir
+def admin_list_all_files do
+  from(f in File, select: f)
+  |> Repo.all(skip_tekoa_id: true)  # Bypass RLS
+end
+```
+
+**Important:** RLS is a PostgreSQL feature (open-source database) and requires no additional dependencies. This follows Tainá's principle of using only OSS and free tools.
 
 #### Real-time Communication
 
