@@ -1,5 +1,11 @@
 # RFC: Tainá PWA Superapp Architecture
 
+> **⚠️ Parcialmente superada pela [RFC 002](RFC_002_MVP.md) (2026-06-09).**
+> As decisões de entrega e cliente (PWA offline-first, superapp LiveView,
+> chat no MVP, cronograma 2025) foram revisadas. O modelo de dados, o
+> isolamento por RLS e o desenho de storage continuam válidos como
+> referência.
+
 **Status:** Draft
 **Author:** Technical Architecture Team
 **Date:** 2025-08-31
