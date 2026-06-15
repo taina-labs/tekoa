@@ -66,4 +66,4 @@ Este documento está sob a licença [GNU Affero General Public License](LICENSE)
 
 ---
 
-Juntes, vamos construir uma aldeia digital justa, colaborativa e viva — um verdadeiro **tekoá**, espaço de encontro e aprendizado.
+Juntes, vamos construir uma aldeia digital justa, colaborativa e viva, um verdadeiro **tekoá**, espaço de encontro e aprendizado.

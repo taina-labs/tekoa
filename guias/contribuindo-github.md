@@ -41,13 +41,13 @@ https://github.com/taina-labs/taina
 
 As issues são categorizadas por labels que representam contextos de trabalho:
 
-| Label | Descrição | Exemplos |
-|-------|-----------|----------|
-| `engineering` | Desenvolvimento técnico | Backend, frontend, infraestrutura |
-| `design` | Design visual e UX | Logo, mockups, identidade visual |
-| `documentation` | Documentação e guias | Tutoriais, tradução, READMEs |
-| `economics` | Pesquisa de hardware e custos | Preços, fornecedores, análises |
-| `community` | Comunidade e governança | Eventos, outreach, feedback |
+| Label           | Descrição                     | Exemplos                          |
+| --------------- | ----------------------------- | --------------------------------- |
+| `engineering`   | Desenvolvimento técnico       | Backend, frontend, infraestrutura |
+| `design`        | Design visual e UX            | Logo, mockups, identidade visual  |
+| `documentation` | Documentação e guias          | Tutoriais, tradução, READMEs      |
+| `economics`     | Pesquisa de hardware e custos | Preços, fornecedores, análises    |
+| `community`     | Comunidade e governança       | Eventos, outreach, feedback       |
 
 https://github.com/taina-labs/taina/labels
 
@@ -275,12 +275,14 @@ https://taina-forum.zeetech.io
 #### Quando usar Discourse vs Issue
 
 **Use Discourse para:**
+
 - Perguntas gerais ("Como funciona X?")
 - Ideias ainda não estruturadas
 - Compartilhar experiências
 - Anúncios para a comunidade
 
 **Use Issue para:**
+
 - Tarefas específicas
 - Bugs concretos
 - Features bem definidas
@@ -319,10 +321,11 @@ Markdown é uma forma simples de formatar texto. Exemplos:
 
 ```markdown
 # Título grande
+
 ## Título médio
 
 **negrito**
-*itálico*
+_itálico_
 
 - Item de lista
 - Outro item
@@ -372,7 +375,7 @@ Não se preocupe. Erros fazem parte do processo, e a comunidade está aqui para 
 ### Ao comentar
 
 - **Seja respeitoso**: Lembre-se que todos são voluntários
-- **Adicione valor**: Evite comentários tipo "+1" (use reações 👍 para concordar)
+- **Adicione valor**: Evite comentários tipo "+1" (use reações para concordar)
 - **Seja construtivo**: Critique ideias, não pessoas
 - **Mantenha foco**: Se o assunto divergir muito, abra nova issue
 

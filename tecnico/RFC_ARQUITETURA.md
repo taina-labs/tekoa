@@ -1,6 +1,6 @@
 # RFC: Tainá PWA Superapp Architecture
 
-> **⚠️ Parcialmente superada pela [RFC 002](RFC_002_MVP.md) (2026-06-09).**
+> **Parcialmente superada pela [RFC 002](RFC_002_MVP.md) (2026-06-09).**
 > As decisões de entrega e cliente (PWA offline-first, superapp LiveView,
 > chat no MVP, cronograma 2025) foram revisadas. O modelo de dados, o
 > isolamento por RLS e o desenho de storage continuam válidos como
@@ -22,6 +22,7 @@ Tainá is fundamentally different from mainstream platforms. We design for **les
 The architecture prioritizes rapid MVP development through a mobile-first PWA approach while maintaining clear service boundaries for future client extraction. Built as a modular monolith in Elixir/Phoenix with LiveView, Tainá delivers real-time, app-like experiences without the complexity of separate native applications or API layers.
 
 **Design Principles for Sovereign Communities:**
+
 - Default to privacy and minimalism (notifications disabled by default)
 - No distinction between "DM" and "group" - flexibility over rigid categorization
 - Community control over all data and infrastructure
@@ -36,53 +37,37 @@ Tainá operates on the principle of "Functional Core, Imperative Shell" with cle
 
 ### PWA Superapp Architecture
 
-```
-┌──────────────────────────────────────────────────────────┐
-│               TAINÁ PWA SUPERAPP                         │
-│            (Mobile-First Web Application)                │
-│                                                          │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │         LiveView Frontend Layer                   │  │
-│  │                                                    │  │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐          │  │
-│  │  │  Ybira   │ │   Jaci   │ │  Guará   │          │  │
-│  │  │  Files   │ │  Photos  │ │Messaging │          │  │
-│  │  │   UI     │ │    UI    │ │    UI    │          │  │
-│  │  └────┬─────┘ └────┬─────┘ └────┬─────┘          │  │
-│  │       │            │            │                 │  │
-│  │  ┌────┴────────────┴────────────┴─────────────┐   │  │
-│  │  │     Shared Components & Navigation        │   │  │
-│  │  │  (Service Switcher, Auth, Layouts)        │   │  │
-│  │  └───────────────────────────────────────────┘   │  │
-│  └────────────────────────────────────────────────────┘  │
-│                          │                               │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │         Service Layer (Business Logic)           │  │
-│  │                                                    │  │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐          │  │
-│  │  │  Ybira   │◄┤   Jaci   │ │  Guará   │          │  │
-│  │  │  (Files) │ │ (Photos) │◄┤(Messaging)          │  │
-│  │  └─────┬────┘ └──────────┘ └──────────┘          │  │
-│  │        └──────► (Foundation Service)              │  │
-│  │                                                    │  │
-│  │  ┌──────────┐ ┌──────────────────────────────┐   │  │
-│  │  │   Auth   │ │        Core                  │   │  │
-│  │  │          │ │  (Communities, Shared Logic) │   │  │
-│  │  └──────────┘ └──────────────────────────────┘   │  │
-│  └────────────────────────────────────────────────────┘  │
-│                          │                               │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │         Infrastructure Layer                      │  │
-│  │  • PostgreSQL (Separate Schemas)                 │  │
-│  │  • Phoenix PubSub • Phoenix Channels             │  │
-│  │  • File Storage   • Session Management           │  │
-│  └────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────┘
-              │
-    ┌─────────▼──────────┐
-    │  Home Server +     │
-    │  VPN Setup         │
-    └────────────────────┘
+```mermaid
+graph TB
+    subgraph app["Tainá PWA Superapp (mobile-first web application)"]
+        direction TB
+        subgraph fe["LiveView Frontend Layer"]
+            direction TB
+            ybira_ui["Ybira Files UI"]
+            jaci_ui["Jaci Photos UI"]
+            guara_ui["Guará Messaging UI"]
+            shared["Shared Components and Navigation<br/>Service Switcher, Auth, Layouts"]
+            ybira_ui --> shared
+            jaci_ui --> shared
+            guara_ui --> shared
+        end
+        subgraph svc["Service Layer (business logic)"]
+            direction TB
+            ybira_svc["Ybira Files<br/>foundation service"]
+            jaci_svc["Jaci Photos"]
+            guara_svc["Guará Messaging"]
+            auth["Auth"]
+            core["Core<br/>communities, shared logic"]
+            jaci_svc --> ybira_svc
+            guara_svc --> ybira_svc
+        end
+        subgraph infra["Infrastructure Layer"]
+            infra_items["PostgreSQL (separate schemas)<br/>Phoenix PubSub, Phoenix Channels<br/>File Storage, Session Management"]
+        end
+        fe --> svc
+        svc --> infra
+    end
+    app --> server["Home Server + VPN setup"]
 ```
 
 **Note:** Arrows indicate service dependencies. Ybira (Files) is the foundation service used by both Jaci (Photos) and Guará (Messaging) for file operations.
@@ -97,19 +82,19 @@ The system organizes as a single deployable Phoenix application with clear servi
 
 ```elixir
 lib/taina/
-├── auth/              # Authentication & authorization
-├── core/              # Communities & shared business logic
-├── ybira/             # File system service (foundation)
-├── jaci/              # Photos service (depends on Ybira)
-└── guara/             # Messaging service (depends on Ybira)
+|-- auth/              # Authentication & authorization
+|-- core/              # Communities & shared business logic
+|-- ybira/             # File system service (foundation)
+|-- jaci/              # Photos service (depends on Ybira)
+`-- guara/             # Messaging service (depends on Ybira)
 
 lib/taina_web/
-├── live/
-│   ├── ybira/         # File browser LiveViews
-│   ├── jaci/          # Photo gallery LiveViews
-│   └── guara/         # Chat LiveViews
-├── components/        # Shared UI components
-└── controllers/       # Session, future API endpoints
+|-- live/
+|   |-- ybira/         # File browser LiveViews
+|   |-- jaci/          # Photo gallery LiveViews
+|   `-- guara/         # Chat LiveViews
+|-- components/        # Shared UI components
+`-- controllers/       # Session, future API endpoints
 ```
 
 **Service Communication:**
@@ -172,20 +157,20 @@ lib/taina_web/
 
 ```
 users
-├── id (nanoid)
-├── email (unique per community)
-├── encrypted_password
-├── role (enum: admin, member, guest)
-├── community_id (foreign key)
-├── confirmed_at
-└── timestamps
+|-- id (nanoid)
+|-- email (unique per community)
+|-- encrypted_password
+|-- role (enum: admin, member, guest)
+|-- community_id (foreign key)
+|-- confirmed_at
+`-- timestamps
 
 communities
-├── id (nanoid)
-├── name (unique)
-├── settings (jsonb)
-├── storage_quota_gb
-└── timestamps
+|-- id (nanoid)
+|-- name (unique)
+|-- settings (jsonb)
+|-- storage_quota_gb
+`-- timestamps
 ```
 
 **LiveView Integration:**
@@ -209,25 +194,25 @@ communities
 
 ```
 ybira.files
-├── id (nanoid)
-├── user_id (foreign key to public.users)
-├── community_id (foreign key to public.communities)
-├── folder_id (foreign key to ybira.folders, nullable for root)
-├── filename
-├── original_filename
-├── file_path
-├── mime_type
-├── file_size_bytes
-├── metadata (jsonb)
-└── timestamps
+|-- id (nanoid)
+|-- user_id (foreign key to public.users)
+|-- community_id (foreign key to public.communities)
+|-- folder_id (foreign key to ybira.folders, nullable for root)
+|-- filename
+|-- original_filename
+|-- file_path
+|-- mime_type
+|-- file_size_bytes
+|-- metadata (jsonb)
+`-- timestamps
 
 ybira.folders
-├── id (nanoid)
-├── user_id
-├── community_id
-├── parent_id (self-referential, nullable for root)
-├── name
-└── timestamps
+|-- id (nanoid)
+|-- user_id
+|-- community_id
+|-- parent_id (self-referential, nullable for root)
+|-- name
+`-- timestamps
 ```
 
 **Public API (used by other services):**
@@ -254,19 +239,19 @@ Ybira stores files on the local filesystem with a deterministic path structure t
 
 ```
 /var/taina/storage/
-└── communities/
-    └── {community_id}/
-        ├── files/
-        │   └── {year}/
-        │       └── {month}/
-        │           └── {file_id}.{ext}    # Original file
-        ├── thumbnails/
-        │   └── {file_id}/
-        │       ├── small.webp   (200px)
-        │       ├── medium.webp  (800px)
-        │       └── large.webp   (1600px)
-        └── temp/
-            └── {upload_id}/     # Temporary upload staging
+`-- communities/
+    `-- {community_id}/
+        |-- files/
+        |   `-- {year}/
+        |       `-- {month}/
+        |           `-- {file_id}.{ext}    # Original file
+        |-- thumbnails/
+        |   `-- {file_id}/
+        |       |-- small.webp   (200px)
+        |       |-- medium.webp  (800px)
+        |       `-- large.webp   (1600px)
+        `-- temp/
+            `-- {upload_id}/     # Temporary upload staging
 ```
 
 **Design Rationale:**
@@ -279,67 +264,57 @@ Ybira stores files on the local filesystem with a deterministic path structure t
 
 **Upload Pipeline:**
 
-```
-1. LiveView Upload Start
-   └─→ Phoenix.LiveView.allow_upload validates file type/size
-       └─→ Temp file created in /var/taina/storage/communities/{id}/temp/{upload_id}/
-
-2. Upload Progress
-   └─→ LiveView streams chunks via WebSocket
-       └─→ Progress updates sent to client
-
-3. Upload Complete (consume_uploaded_entries)
-   └─→ Taina.Ybira.upload/3 called with temp file path
-       ├─→ Validate: mime type, file size, virus scan (future)
-       ├─→ Generate: file_id (nanoid), final path
-       ├─→ Move: temp file → permanent location
-       ├─→ Extract: metadata (size, mime, hash for deduplication)
-       ├─→ Create: database record in ybira.files
-       └─→ Schedule: thumbnail generation (async)
-
-4. Post-Upload
-   └─→ Temp directory cleaned up
-   └─→ PubSub broadcast: {:file_uploaded, file_id} (for UI updates)
+```mermaid
+flowchart TD
+    A["1. LiveView upload start"] --> A1["allow_upload validates file type/size"]
+    A1 --> A2["temp file created under /var/taina/storage/communities/(id)/temp/(upload_id)/"]
+    A2 --> B["2. Upload progress"]
+    B --> B1["LiveView streams chunks via WebSocket"]
+    B1 --> B2["progress updates sent to client"]
+    B2 --> C["3. Upload complete (consume_uploaded_entries)"]
+    C --> C1["Taina.Ybira.upload/3 called with temp file path"]
+    C1 --> S1["validate: mime type, file size, virus scan (future)"]
+    C1 --> S2["generate: file_id (nanoid), final path"]
+    C1 --> S3["move: temp file to permanent location"]
+    C1 --> S4["extract: metadata (size, mime, hash for dedup)"]
+    C1 --> S5["create: database record in ybira.files"]
+    C1 --> S6["schedule: thumbnail generation (async)"]
+    S6 --> D["4. Post-upload"]
+    D --> D1["temp directory cleaned up"]
+    D --> D2["PubSub broadcast :file_uploaded with file_id, for UI updates"]
 ```
 
 **File Quarantine and Validation:**
 
 For security and data integrity, all uploads go through a quarantine process before being moved to production storage:
 
-```
-1. Upload to Quarantine
-   └─→ File lands in /var/taina/storage/communities/{id}/temp/{upload_id}/
-       └─→ Isolated from production files
-
-2. Validation Pipeline (Sequential)
-   ├─→ MIME Type Validation
-   │   ├─→ Check actual file content (not just extension)
-   │   ├─→ Use libmagic to detect real MIME type
-   │   └─→ Reject if mismatch with declared type
-   │
-   ├─→ Virus Scanning (ClamAV - open-source)
-   │   ├─→ Scan file with freshclam signatures
-   │   ├─→ Quarantine indefinitely if malware detected
-   │   └─→ Alert admin via notification system
-   │
-   ├─→ File Size Validation
-   │   ├─→ Verify against quota limits
-   │   └─→ Check community storage availability
-   │
-   └─→ Content-Specific Validation
-       ├─→ Images: Check valid format, dimensions
-       ├─→ Videos: Verify codec, duration limits
-       └─→ Documents: PDF validation
-
-3. Move to Production
-   └─→ Only after ALL checks pass
-       └─→ Move from temp/ to files/{year}/{month}/
-           └─→ Create database record
-               └─→ PubSub broadcast success
-
-4. Quarantine Retention
-   └─→ Failed files kept in temp/ for 7 days (admin review)
-   └─→ Automatic cleanup after retention period
+```mermaid
+flowchart TD
+    Q1["1. Upload to quarantine"] --> Q1a["file lands under temp/(upload_id)/, isolated from production"]
+    Q1a --> Q2["2. Validation pipeline (sequential)"]
+    Q2 --> M["MIME type validation"]
+    M --> M1["check actual file content, not just extension"]
+    M1 --> M2["use libmagic to detect real MIME type"]
+    M2 --> M3["reject if mismatch with declared type"]
+    Q2 --> V["virus scanning (ClamAV, open-source)"]
+    V --> V1["scan file with freshclam signatures"]
+    V1 --> V2["quarantine indefinitely if malware detected"]
+    V2 --> V3["alert admin via notification system"]
+    Q2 --> Z["file size validation"]
+    Z --> Z1["verify against quota limits"]
+    Z1 --> Z2["check community storage availability"]
+    Q2 --> Cc["content-specific validation"]
+    Cc --> Cc1["images: check valid format, dimensions"]
+    Cc --> Cc2["videos: verify codec, duration limits"]
+    Cc --> Cc3["documents: PDF validation"]
+    Cc3 --> P["3. Move to production"]
+    P --> P1["only after ALL checks pass"]
+    P1 --> P2["move from temp/ to files/(year)/(month)/"]
+    P2 --> P3["create database record"]
+    P3 --> P4["PubSub broadcast success"]
+    P4 --> R["4. Quarantine retention"]
+    R --> R1["failed files kept in temp/ for 7 days (admin review)"]
+    R --> R2["automatic cleanup after retention period"]
 ```
 
 **ClamAV Integration:**
@@ -509,7 +484,7 @@ end)
 
 **File deletion flow:**
 
-1. User deletes file → `Ybira.delete_file(file_id, user)`
+1. User deletes file -> `Ybira.delete_file(file_id, user)`
 2. Database record marked as `deleted_at` (soft delete)
 3. Background job permanently removes file and thumbnails after 30 days
 4. Hard delete updates community storage quota
@@ -537,27 +512,27 @@ Files are hashed (SHA-256) on upload. If hash matches existing file:
 
 ```
 jaci.photos
-├── id (nanoid)
-├── file_id (foreign key to ybira.files)
-├── user_id
-├── community_id
-├── taken_at (extracted from EXIF)
-├── metadata (jsonb: dimensions, location, camera info)
-└── timestamps
+|-- id (nanoid)
+|-- file_id (foreign key to ybira.files)
+|-- user_id
+|-- community_id
+|-- taken_at (extracted from EXIF)
+|-- metadata (jsonb: dimensions, location, camera info)
+`-- timestamps
 
 jaci.albums
-├── id (nanoid)
-├── user_id
-├── community_id
-├── name
-├── slug (URL-friendly)
-├── cover_photo_id (foreign key to jaci.photos)
-└── timestamps
+|-- id (nanoid)
+|-- user_id
+|-- community_id
+|-- name
+|-- slug (URL-friendly)
+|-- cover_photo_id (foreign key to jaci.photos)
+`-- timestamps
 
 jaci.album_photos
-├── album_id
-├── photo_id
-└── position (integer for ordering)
+|-- album_id
+|-- photo_id
+`-- position (integer for ordering)
 ```
 
 **Service Integration:**
@@ -581,29 +556,27 @@ jaci.album_photos
 
 Jaci leverages Ybira for file storage but adds photo-specific processing:
 
-```
-1. User Upload (LiveView)
-   └─→ Taina.Ybira.upload(user, photo_file)
-       └─→ Returns: {:ok, %File{id: file_id, ...}}
-
-2. Photo Post-Processing (async Oban job)
-   ├─→ EXIF Extraction
-   │   ├─→ taken_at (DateTime from EXIF DateTimeOriginal)
-   │   ├─→ camera_info (make, model, lens)
-   │   ├─→ location (GPS coordinates if present)
-   │   └─→ dimensions (width x height)
-   ├─→ Orientation Fix
-   │   └─→ Auto-rotate based on EXIF orientation flag
-   ├─→ Thumbnail Generation (delegates to Ybira)
-   │   ├─→ small: 200px square (gallery grid)
-   │   ├─→ medium: 800px wide (detail view)
-   │   └─→ large: 1600px wide (fullscreen)
-   └─→ Create jaci.photos record
-       └─→ Links to ybira.files via file_id
-
-3. Gallery Display
-   └─→ Query jaci.photos with thumbnails
-       └─→ Lazy load images as user scrolls
+```mermaid
+flowchart TD
+    A["1. User upload (LiveView)"] --> A1["Taina.Ybira.upload(user, photo_file)"]
+    A1 --> A2["returns (:ok, %File) with file_id"]
+    A2 --> B["2. Photo post-processing (async Oban job)"]
+    B --> E["EXIF extraction"]
+    E --> E1["taken_at (from EXIF DateTimeOriginal)"]
+    E --> E2["camera_info (make, model, lens)"]
+    E --> E3["location (GPS coordinates if present)"]
+    E --> E4["dimensions (width x height)"]
+    B --> O["orientation fix"]
+    O --> O1["auto-rotate based on EXIF orientation flag"]
+    B --> T["thumbnail generation (delegates to Ybira)"]
+    T --> T1["small: 200px square (gallery grid)"]
+    T --> T2["medium: 800px wide (detail view)"]
+    T --> T3["large: 1600px wide (fullscreen)"]
+    B --> Cr["create jaci.photos record"]
+    Cr --> Cr1["links to ybira.files via file_id"]
+    Cr1 --> G["3. Gallery display"]
+    G --> G1["query jaci.photos with thumbnails"]
+    G1 --> G2["lazy load images as user scrolls"]
 ```
 
 **EXIF Extraction:**
@@ -767,28 +740,28 @@ Large galleries use virtual scrolling to render only visible photos:
 
 ```
 guara.conversations
-├── id (nanoid)
-├── community_id
-├── name (for groups, null for DM)
-├── conversation_type (enum: 'direct', 'group')
-├── created_by
-└── timestamps
+|-- id (nanoid)
+|-- community_id
+|-- name (for groups, null for DM)
+|-- conversation_type (enum: 'direct', 'group')
+|-- created_by
+`-- timestamps
 
 guara.participants
-├── conversation_id
-├── user_id
-├── joined_at
-└── last_read_at
+|-- conversation_id
+|-- user_id
+|-- joined_at
+`-- last_read_at
 
 guara.messages
-├── id (nanoid)
-├── conversation_id
-├── user_id
-├── content (text)
-├── message_type (enum: 'text', 'image', 'video', 'audio')
-├── file_id (foreign key to ybira.files, nullable)
-├── metadata (jsonb)
-└── timestamps
+|-- id (nanoid)
+|-- conversation_id
+|-- user_id
+|-- content (text)
+|-- message_type (enum: 'text', 'image', 'video', 'audio')
+|-- file_id (foreign key to ybira.files, nullable)
+|-- metadata (jsonb)
+`-- timestamps
 ```
 
 **Service Integration:**
@@ -822,25 +795,23 @@ guara.messages
 
 Guará uses a hybrid approach: LiveView for UI, Phoenix Channels for real-time features:
 
-```
-1. User Sends Message (LiveView event)
-   └─→ handle_event("send_message", %{"content" => text}, socket)
-       └─→ Taina.Guara.send_message(conversation_id, user, %{content: text})
-           ├─→ Validate: user is participant, content not empty
-           ├─→ Insert: guara.messages record
-           ├─→ Broadcast via PubSub: {:new_message, message}
-           │   └─→ All LiveViews subscribed to conversation update UI
-           └─→ Broadcast via Channel: "new_msg" event
-               └─→ Online users see typing indicator stop
-
-2. Message with Attachment
-   ├─→ User uploads file via Ybira
-   ├─→ Send message with file_id
-   └─→ Recipients see inline attachment (image preview, video player, etc.)
-
-3. Unread Count Update
-   └─→ PubSub broadcast to user:{recipient_id}
-       └─→ Conversation list LiveView updates badge count
+```mermaid
+flowchart TD
+    A["1. User sends message (LiveView event)"] --> A1["handle_event send_message with content and socket"]
+    A1 --> A2["Taina.Guara.send_message(conversation_id, user, content)"]
+    A2 --> V["validate: user is participant, content not empty"]
+    A2 --> I["insert: guara.messages record"]
+    A2 --> Pb["broadcast via PubSub :new_message"]
+    Pb --> Pb1["subscribed LiveViews update UI"]
+    A2 --> Ch["broadcast via Channel new_msg event"]
+    Ch --> Ch1["online users see typing indicator stop"]
+    A2 --> B["2. Message with attachment"]
+    B --> B1["user uploads file via Ybira"]
+    B1 --> B2["send message with file_id"]
+    B2 --> B3["recipients see inline attachment (image, video, etc.)"]
+    B3 --> U["3. Unread count update"]
+    U --> U1["PubSub broadcast to user recipient_id"]
+    U1 --> U2["conversation list LiveView updates badge count"]
 ```
 
 **Phoenix Channels Integration:**
@@ -1088,15 +1059,15 @@ The following services are planned for future iterations but not included in the
 Database: taina_production
 
 Schemas (MVP):
-├── public (shared: users, communities)
-├── ybira (files, folders)
-├── jaci (photos, albums, album_photos)
-└── guara (conversations, participants, messages)
+|-- public (shared: users, communities)
+|-- ybira (files, folders)
+|-- jaci (photos, albums, album_photos)
+`-- guara (conversations, participants, messages)
 
 Future Schemas (Post-MVP):
-├── araci (streaming media)
-├── karai (monitoring, security)
-└── ... (other services)
+|-- araci (streaming media)
+|-- karai (monitoring, security)
+`-- ... (other services)
 ```
 
 **Schema Isolation Benefits:**
@@ -1309,30 +1280,30 @@ Phoenix.PubSub.broadcast(Taina.PubSub, "user:#{user.id}", {:new_message, message
 
 ```
 lib/taina_web/
-├── live/
-│   ├── auth_live/
-│   │   ├── login.ex              # Login form
-│   │   └── register.ex           # Registration form
-│   ├── ybira_live/
-│   │   ├── file_browser.ex       # Main file browser
-│   │   ├── upload.ex             # Upload modal
-│   │   └── preview.ex            # File preview modal
-│   ├── jaci_live/
-│   │   ├── gallery.ex            # Photo grid/timeline
-│   │   ├── upload.ex             # Photo upload
-│   │   ├── album_index.ex        # Album list
-│   │   └── album_show.ex         # Album detail
-│   └── guara_live/
-│       ├── conversation_index.ex # Conversation list
-│       └── conversation_show.ex  # Message thread
-├── components/
-│   ├── core_components.ex        # Phoenix default components
-│   ├── navigation.ex             # Service switcher, nav bar
-│   ├── file_upload.ex            # Shared upload component
-│   └── avatar.ex                 # User avatar component
-├── controllers/
-│   └── session_controller.ex     # Session create/destroy
-└── router.ex                      # Routes and pipelines
+|-- live/
+|   |-- auth_live/
+|   |   |-- login.ex              # Login form
+|   |   `-- register.ex           # Registration form
+|   |-- ybira_live/
+|   |   |-- file_browser.ex       # Main file browser
+|   |   |-- upload.ex             # Upload modal
+|   |   `-- preview.ex            # File preview modal
+|   |-- jaci_live/
+|   |   |-- gallery.ex            # Photo grid/timeline
+|   |   |-- upload.ex             # Photo upload
+|   |   |-- album_index.ex        # Album list
+|   |   `-- album_show.ex         # Album detail
+|   `-- guara_live/
+|       |-- conversation_index.ex # Conversation list
+|       `-- conversation_show.ex  # Message thread
+|-- components/
+|   |-- core_components.ex        # Phoenix default components
+|   |-- navigation.ex             # Service switcher, nav bar
+|   |-- file_upload.ex            # Shared upload component
+|   `-- avatar.ex                 # User avatar component
+|-- controllers/
+|   `-- session_controller.ex     # Session create/destroy
+`-- router.ex                      # Routes and pipelines
 ```
 
 ### Route Structure
@@ -1429,7 +1400,7 @@ end
 
 ```
 1. User visits /auth/login LiveView
-2. Form submission → POST /auth/session
+2. Form submission -> POST /auth/session
 3. Server validates credentials via Taina.Auth
 4. Phoenix session created with user_id
 5. Redirect to dashboard
@@ -2150,16 +2121,16 @@ CREATE INDEX idx_participants_user ON guara.participants(user_id);
 
 **Single Node Architecture:**
 
-```
-┌─────────────────────────────────────┐
-│      Home Server / Mini PC          │
-├─────────────────────────────────────┤
-│  Docker Compose:                    │
-│  ├── taina (Phoenix app)            │
-│  ├── postgres (with all schemas)    │
-│  ├── nginx (reverse proxy)          │
-│  └── vpn-service (WireGuard/etc)    │
-└─────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph host["Home Server / Mini PC"]
+        subgraph dc["Docker Compose"]
+            taina["taina (Phoenix app)"]
+            postgres["postgres (all schemas)"]
+            nginx["nginx (reverse proxy)"]
+            vpn["vpn-service (WireGuard, etc.)"]
+        end
+    end
 ```
 
 **Process Supervision:** OTP supervision trees for fault tolerance
@@ -2185,7 +2156,7 @@ CREATE INDEX idx_participants_user ON guara.participants(user_id);
 ### Test Pyramid Structure
 
 **Unit Tests:** Pure business logic in service contexts
-**Integration Tests:** Service interactions (Jaci→Ybira, Guará→Ybira)
+**Integration Tests:** Service interactions (Jaci->Ybira, Guará->Ybira)
 **LiveView Tests:** User interactions and UI behavior
 **End-to-End Tests:** Critical user flows (upload photo, send message)
 
@@ -2222,23 +2193,23 @@ end
 
 ```
 test/
-├── taina/
-│   ├── auth_test.exs
-│   ├── ybira_test.exs
-│   ├── jaci_test.exs
-│   └── guara_test.exs
-├── taina_web/
-│   ├── live/
-│   │   ├── ybira_live_test.exs
-│   │   ├── jaci_live_test.exs
-│   │   └── guara_live_test.exs
-│   └── controllers/
-│       └── session_controller_test.exs
-├── integration/
-│   └── service_integration_test.exs  # Jaci→Ybira, etc.
-└── support/
-    ├── fixtures.ex
-    └── conn_case.ex
+|-- taina/
+|   |-- auth_test.exs
+|   |-- ybira_test.exs
+|   |-- jaci_test.exs
+|   `-- guara_test.exs
+|-- taina_web/
+|   |-- live/
+|   |   |-- ybira_live_test.exs
+|   |   |-- jaci_live_test.exs
+|   |   `-- guara_live_test.exs
+|   `-- controllers/
+|       `-- session_controller_test.exs
+|-- integration/
+|   `-- service_integration_test.exs  # Jaci->Ybira, etc.
+`-- support/
+    |-- fixtures.ex
+    `-- conn_case.ex
 ```
 
 ## MVP Implementation Order (1-Year Timeline)
@@ -2325,6 +2296,6 @@ This RFC establishes a pragmatic architecture for rapid MVP delivery through a P
 - 99.5% uptime for community instances
 
 **Post-MVP Evolution:**
-The architecture supports extracting services as native apps by adding REST/GraphQL APIs without refactoring business logic. Service dependencies (Jaci→Ybira, Guará→Ybira) are explicitly designed for API extraction.
+The architecture supports extracting services as native apps by adding REST/GraphQL APIs without refactoring business logic. Service dependencies (Jaci->Ybira, Guará->Ybira) are explicitly designed for API extraction.
 
-Implementation prioritizes Ybira (foundation) → Jaci (photos) → Guará (messaging), ensuring each service is fully functional before moving to the next. This incremental approach delivers value early and validates architectural decisions with real usage.
+Implementation prioritizes Ybira (foundation) -> Jaci (photos) -> Guará (messaging), ensuring each service is fully functional before moving to the next. This incremental approach delivers value early and validates architectural decisions with real usage.

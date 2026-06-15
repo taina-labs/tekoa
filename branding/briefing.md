@@ -4,11 +4,11 @@
 
 **Tainá** é um ecossistema de nuvem privada e auto-hospedada, construído com tecnologia brasileira para comunidades que buscam independência digital. O nome significa "estrela da manhã" em Tupi-Guarani, simbolizando o guia para um novo amanhecer tecnológico.
 
-A documentação e colaboração pública do projeto serão centralizadas em **Tekoá**, um repositório aberto de conhecimento cujo nome remete ao espaço coletivo de uma aldeia — um ponto de encontro da comunidade global.
+A documentação e colaboração pública do projeto serão centralizadas em **Tekoá**, um repositório aberto de conhecimento cujo nome remete ao espaço coletivo de uma aldeia, um ponto de encontro da comunidade global.
 
 ### Arquitetura: Superapp PWA
 
-Tainá é entregue como um **Progressive Web App (PWA)** no formato de **superapp** — uma única aplicação que integra múltiplos serviços em uma experiência coesa e fluida. Inspirado em superapps orientais como WeChat, Gojek e Grab, mas adaptado à sensibilidade de design ocidental e à identidade brasileira, Tainá combina:
+Tainá é entregue como um **Progressive Web App (PWA)** no formato de **superapp**, uma única aplicação que integra múltiplos serviços em uma experiência coesa e fluida. Inspirado em superapps orientais como WeChat, Gojek e Grab, mas adaptado à sensibilidade de design ocidental e à identidade brasileira, Tainá combina:
 
 - **Unificação de serviços** em uma interface consistente
 - **Navegação centralizada** com acesso rápido entre funcionalidades
@@ -39,11 +39,11 @@ A identidade deve contar a história de uma jornada comunitária guiada pela est
 
 ### Personalidade
 
-- **Confiável**, mas não corporativa
-- **Inovadora**, sem intimidação técnica
-- **Brasileira**, sem caricaturas
-- **Técnica**, mas convidativa
-- **Moderna**, sem se prender a tendências passageiras
+- **Confiável**: mas não corporativa
+- **Inovadora**: sem intimidação técnica
+- **Brasileira**: sem caricaturas
+- **Técnica**: mas convidativa
+- **Moderna**: sem se prender a tendências passageiras
 
 ### Tom de Voz Visual
 
@@ -63,7 +63,7 @@ A identidade deve contar a história de uma jornada comunitária guiada pela est
 - Símbolo central de **estrela estilizada**
 - Combinação de **geometria tecnológica** e **formas orgânicas**
 - **Ascensão** como metáfora de progresso e amanhecer
-- **Rede de nós conectados**, refletindo descentralização e comunidade
+- **Rede de nós conectados**: refletindo descentralização e comunidade
 
 **Variações necessárias**:
 
@@ -153,8 +153,8 @@ Expansão gradual do ecossistema conforme feedback da comunidade:
 
 - **Cards** e **botões** simples e funcionais, com feedback claro
 - **Ícones lineares** com consistência visual entre serviços
-- **Espaçamento amplo**, criando respiro e legibilidade
-- **Animações suaves**, reforçando uma experiência acolhedora
+- **Espaçamento amplo**: criando respiro e legibilidade
+- **Animações suaves**: reforçando uma experiência acolhedora
 - **Service Switcher**: Component unificado para alternar entre Ybira/Jaci/Guará
 - **Upload Progress**: Component compartilhado (usado em todos os serviços)
 
@@ -180,7 +180,7 @@ Expansão gradual do ecossistema conforme feedback da comunidade:
 
 ### PWA Superapp (Produto Principal)
 
-- **Tema escuro como padrão**, modo claro opcional
+- **Tema escuro como padrão**: modo claro opcional
 - **Service-specific accents**: Cada serviço com cor de destaque
 - **Bottom nav mobile**: Sempre acessível, com indicadores de contexto
 - **Sidebar desktop**: Persistente, com ícones + labels

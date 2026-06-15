@@ -1,7 +1,7 @@
 # Tekoá
 
 Tekoá é o repositório público de documentação e guias do ecossistema **Tainá**.  
-O nome vem do Tupi-Guarani e significa “lugar onde se vive” ou “aldeia”, refletindo a ideia de comunidade, partilha e construção coletiva.
+O nome vem do Tupi-Guarani e significa "lugar onde se vive" ou "aldeia", refletindo a ideia de comunidade, partilha e construção coletiva.
 
 Este espaço concentra documentação técnica, guias de contribuição, tutoriais, referências de design e materiais conceituais, servindo como ponto de partida para quem deseja conhecer ou colaborar com o projeto.
 

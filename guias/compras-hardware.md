@@ -23,11 +23,11 @@
 
 | Item                   | Especificação                   | Preço (R$)   | Onde Comprar                                                                                                                                |
 | ---------------------- | ------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Raspberry Pi 5 8GB** | BCM2712, 2.4GHz quad-core       | R$ 580       | [FilipeFlop](https://www.filipeflop.com/produto/raspberry-pi-5-8gb/) • [MercadoLivre](https://lista.mercadolivre.com.br/raspberry-pi-5-8gb) |
+| **Raspberry Pi 5 8GB** | BCM2712, 2.4GHz quad-core       | R$ 580       | [FilipeFlop](https://www.filipeflop.com/produto/raspberry-pi-5-8gb/) / [MercadoLivre](https://lista.mercadolivre.com.br/raspberry-pi-5-8gb) |
 | **Fonte Oficial**      | 27W USB-C PD                    | R$ 120       | [FilipeFlop](https://www.filipeflop.com/produto/fonte-raspberry-pi-5/)                                                                      |
 | **Case com Cooler**    | Alumínio com dissipação passiva | R$ 85        | [FilipeFlop](https://www.filipeflop.com/produto/case-raspberry-pi-5/)                                                                       |
-| **NVMe HAT**           | Suporte M.2 2280                | R$ 95        | [Pimoroni](https://shop.pimoroni.com/products/nvme-base) • [AliExpress](https://pt.aliexpress.com/w/wholesale-raspberry-pi-5-nvme.html)     |
-| **SSD NVMe 1TB**       | Kingston NV2 ou similar         | R$ 340       | [Kabum](https://www.kabum.com.br/produto/380744) • [Pichau](https://www.pichau.com.br/ssd-kingston-nv2-1tb)                                 |
+| **NVMe HAT**           | Suporte M.2 2280                | R$ 95        | [Pimoroni](https://shop.pimoroni.com/products/nvme-base) / [AliExpress](https://pt.aliexpress.com/w/wholesale-raspberry-pi-5-nvme.html)     |
+| **SSD NVMe 1TB**       | Kingston NV2 ou similar         | R$ 340       | [Kabum](https://www.kabum.com.br/produto/380744) / [Pichau](https://www.pichau.com.br/ssd-kingston-nv2-1tb)                                 |
 | **MicroSD 32GB**       | Classe 10, A1                   | R$ 45        | [Amazon](https://www.amazon.com.br/s?k=microsd+32gb+sandisk)                                                                                |
 | **Cabo Ethernet**      | Cat6, 2m                        | R$ 15        | [Kabum](https://www.kabum.com.br/produto/31788)                                                                                             |
 | **TOTAL**              |                                 | **R$ 1.280** |                                                                                                                                             |
@@ -46,7 +46,7 @@
 
 | Item                 | Especificação            | Preço (R$)   | Onde Comprar                                                                                                                       |
 | -------------------- | ------------------------ | ------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Beelink Mini S12** | N100, 8GB RAM, 256GB SSD | R$ 1.450     | [AliExpress](https://pt.aliexpress.com/item/1005005565018357.html) • [Shopee](https://shopee.com.br/product/893654040/22666790416) |
+| **Beelink Mini S12** | N100, 8GB RAM, 256GB SSD | R$ 1.450     | [AliExpress](https://pt.aliexpress.com/item/1005005565018357.html) / [Shopee](https://shopee.com.br/product/893654040/22666790416) |
 | **RAM Extra 8GB**    | DDR4 3200MHz SODIMM      | R$ 140       | [Kabum](https://www.kabum.com.br/produto/172365)                                                                                   |
 | **SSD Extra 1TB**    | M.2 2280 NVMe            | R$ 340       | [Pichau](https://www.pichau.com.br/ssd-1tb-nvme)                                                                                   |
 | **TOTAL**            |                          | **R$ 1.930** |                                                                                                                                    |
@@ -67,7 +67,7 @@
 
 | Item                        | Especificação                   | Preço (R$)   | Onde Comprar                                                                                         |
 | --------------------------- | ------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------- |
-| **Synology DS224+**         | 2-bay NAS, 2GB RAM              | R$ 2.850     | [Kabum](https://www.kabum.com.br/produto/471846) • [Amazon](https://www.amazon.com.br/dp/B0BW4RWNBR) |
+| **Synology DS224+**         | 2-bay NAS, 2GB RAM              | R$ 2.850     | [Kabum](https://www.kabum.com.br/produto/471846) / [Amazon](https://www.amazon.com.br/dp/B0BW4RWNBR) |
 | **2x HDD 4TB**              | WD Red Plus ou Seagate IronWolf | R$ 1.100     | [Kabum](https://www.kabum.com.br/produto/173163)                                                     |
 | **Mini PC N100**            | Como descrito acima             | R$ 1.450     | Ver links acima                                                                                      |
 | **Switch Gigabit 8 portas** | TP-Link TL-SG108                | R$ 145       | [MercadoLivre](https://produto.mercadolivre.com.br/MLB-1911499909)                                   |
@@ -95,7 +95,7 @@
 
 | Item                          | Especificação           | Preço (R$)    | Onde Comprar                                                                                                 |
 | ----------------------------- | ----------------------- | ------------- | ------------------------------------------------------------------------------------------------------------ |
-| **CPU AMD Ryzen 7 5700G**     | 8C/16T, GPU integrada   | R$ 1.350      | [Kabum](https://www.kabum.com.br/produto/335849) • [Terabyte](https://www.terabyteshop.com.br/produto/18599) |
+| **CPU AMD Ryzen 7 5700G**     | 8C/16T, GPU integrada   | R$ 1.350      | [Kabum](https://www.kabum.com.br/produto/335849) / [Terabyte](https://www.terabyteshop.com.br/produto/18599) |
 | **Placa-mãe B550M**           | ASRock B550M Pro4       | R$ 720        | [Pichau](https://www.pichau.com.br/placa-mae-asrock-b550m-pro4)                                              |
 | **64GB RAM**                  | 2x32GB DDR4 3200MHz     | R$ 1.180      | [Kabum](https://www.kabum.com.br/produto/338542)                                                             |
 | **PSU 650W 80+ Gold**         | Corsair RM650x          | R$ 580        | [Kabum](https://www.kabum.com.br/produto/463991)                                                             |
