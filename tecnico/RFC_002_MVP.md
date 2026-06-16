@@ -59,7 +59,7 @@ Chat (Guará) sai do MVP. Federação, XRPC, IA, apps nativos: pós-MVP.
 | **API pública (REST/XRPC)**                            | Sem cliente para consumi-la, é custo morto. Os contexts já nascem com contrato de API (`Maraca.Behaviour`), então a camada HTTP futura é fina.                                  | Pós-MVP, junto com o app de backup de fotos |
 | **XRPC / AT Protocol**                                 | Nunca esteve na RFC 001 nem no código; só no README. Remover a menção.                                                                                                          | Indefinido (provavelmente nunca)            |
 | **ClamAV / antivírus**                                 | Daemon pesado num Pi, atualizações de assinatura, e o modelo de ameaça é uma comunidade privada, não um serviço de upload público.                                              | Opt-in pós-MVP                              |
-| **E-mail obrigatório**                                 | SMTP auto-hospedado = inferno de deliverability para admin não-técnico. Convites por link/QR code. SMTP da comunidade é opcional.                                               | Opcional desde o MVP                        |
+| **E-mail obrigatório**                                 | SMTP auto-hospedado = inferno de deliverability para admin não-técnico. Convites por link/QR code. SMTP da comunidade é opcional.                                               | Descartado (RFC_003)                        |
 | **Federação / NATS / event bus**                       | Zero demanda comprovada; complexidade enorme.                                                                                                                                   | Quando 10+ comunidades pedirem              |
 | **Multi-nó / clustering**                              | Um nó BEAM atende 50 usuários com folga. `dns_cluster` fica no código, inerte.                                                                                                  | Hospedagem gerenciada                       |
 | **Streaming (Araci), IoT (Ka'a), monitoração (Karai)** | Stubs de README hoje. Manter como visão, não como promessa.                                                                                                                     | Backlog                                     |
@@ -144,6 +144,11 @@ Decisão: Postgres 16, tunado para Pi (shared_buffers baixo, ver compose).
 Admin manda o link pelo canal que a comunidade já usa. Swoosh entra como
 adapter opcional se a comunidade tiver SMTP próprio.
 
+> Atualização (RFC_003, seção 4): o e-mail deixou de ser "opcional" e foi
+> **descartado**. A identidade passou a ser o `username` (login por nome) e a
+> recuperação é mediada pelo zelador via link de redefinição. Esta D6 vale só
+> pela parte de convites por link/QR; para identidade, ver RFC_003.
+
 ### D7, Deploy é produto: Compose primeiro, imagem de appliance depois
 
 - **Deploy v1 (MVP):** `install.sh` + Docker Compose + Caddy (TLS automático)
@@ -199,7 +204,7 @@ Ordem de implementação de receita (todas mantêm o core AGPL):
 | Upload          | LiveView uploads (chunked, progresso)         | TUS/resumable fica para API pós-MVP                                                                                                                     |
 | Download        | `Plug.Conn.send_file/5` com suporte a `Range` | streaming de vídeo básico via offset/length                                                                                                             |
 | Auth            | Sessões em cookie criptografado, bcrypt       | rate limit de login (`hammer`), rotação de sessão                                                                                                       |
-| E-mail          | Swoosh (opcional)                             | convites por link/QR por padrão                                                                                                                         |
+| E-mail          | Descartado (RFC_003)                          | identidade por username; convites por link/QR                                                                                                           |
 | Proxy/TLS       | Caddy                                         | HTTPS automático, headers de segurança                                                                                                                  |
 | i18n            | Gettext, pt-BR primeiro                       |                                                                                                                                                         |
 | Observabilidade | LiveDashboard (admin-only) + `/health`        |                                                                                                                                                         |

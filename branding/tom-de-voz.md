@@ -53,7 +53,7 @@ Texto claro e curto, contraste e rótulos adequados, ícone sempre com texto, re
 
 ## 2. Convenção de nomes (uma fonte de verdade)
 
-Três camadas, deliberadas, nunca misturar ao acaso (ver `tecnico/RFC_003_GOVERNANCA_E_TRANSPARENCIA.md` seção 4):
+Três camadas, deliberadas, nunca misturar ao acaso (ver `tecnico/RFC_003_GOVERNANCA_E_TRANSPARENCIA.md` seção 5):
 
 | Camada             | Quando                                                                  | Exemplos                                                                 |
 | ------------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
@@ -82,16 +82,18 @@ Três camadas, deliberadas, nunca misturar ao acaso (ver `tecnico/RFC_003_GOVERN
 
 ## 4. Glossário de termos do produto
 
-| Conceito                   | Termo (UI = código)              | Nunca dizer                                                 |
-| -------------------------- | -------------------------------- | ----------------------------------------------------------- |
-| Espaço pessoal e privado   | **casa**                         | "meus arquivos privados", "área pessoal"                    |
-| Espaço comum da comunidade | **praça**                        | "público", "compartilhado com todos" (use só na explicação) |
-| Quem cuida da máquina      | **zelador(a)**                   | "admin", "administrador", "dono"                            |
-| Membro da comunidade       | **morador(a)**                   | "usuário", "membro" (em copy)                               |
-| Registro do que aconteceu  | **mural**                        | "log", "feed", "atividade"                                  |
-| Estado da máquina, legível | **Saúde da comunidade** (painel) | "dashboard", "métricas"                                     |
-| Pedir para abrir uma casa  | **pedir acesso**                 | "solicitar permissão"                                       |
-| Decisão coletiva (pós-MVP) | **assembleia**                   | "votação", "governança"                                     |
+| Conceito                    | Termo (UI = código)                   | Nunca dizer                                                 |
+| --------------------------- | ------------------------------------- | ----------------------------------------------------------- |
+| Espaço pessoal e privado    | **casa**                              | "meus arquivos privados", "área pessoal"                    |
+| Espaço comum da comunidade  | **praça**                             | "público", "compartilhado com todos" (use só na explicação) |
+| Quem cuida da máquina       | **zelador(a)**                        | "admin", "administrador", "dono"                            |
+| Membro da comunidade        | **morador(a)**                        | "usuário", "membro" (em copy)                               |
+| Registro do que aconteceu   | **mural**                             | "log", "feed", "atividade"                                  |
+| Estado da máquina, legível  | **Saúde da comunidade** (painel)      | "dashboard", "métricas"                                     |
+| Pedir para abrir uma casa   | **pedir acesso**                      | "solicitar permissão"                                       |
+| Decisão coletiva (pós-MVP)  | **assembleia**                        | "votação", "governança"                                     |
+| Nome de acesso da pessoa    | **nome de usuário** (`username`)      | "login", "user", "e-mail"                                   |
+| Nome que aparece para todos | **nome de exibição** (`display_name`) | "apelido", "perfil"                                         |
 
 ---
 

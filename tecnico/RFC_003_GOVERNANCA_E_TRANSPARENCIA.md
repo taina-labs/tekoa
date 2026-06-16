@@ -49,7 +49,72 @@ Uma tekoa pode ter **vários zeladores**, cuidar da máquina é trabalho que se 
 
 ---
 
-## 4. Convenção de nomes (uma fonte de verdade)
+## 4. Identidade: nome-primeiro, e-mail descartado
+
+O modelo de identidade do Tainá nasceu preso ao e-mail (login por e-mail, conta
+ativada por confirmação de e-mail), mas o produto nunca teve SMTP: convites são
+por link/QR (RFC_002, D6) e a recuperação passa por quem cuida da máquina. O
+e-mail era um campo morto que se fingia de identidade. Este RFC corrige isso: a
+identidade é o **nome**, não o e-mail.
+
+### A pessoa e o nome dela
+
+- **`username` (nome de usuário)**: a identidade da pessoa, única dentro da
+  tekoa. É com ele que o morador entra (login por nome, não por e-mail). É
+  estável: muda raramente, porque é a chave de acesso e a semente da identidade
+  federada futura (ver "Porta para federação").
+- **`display_name` (nome de exibição)**: opcional, texto livre (aceita espaços e
+  acentos). É como o nome aparece para a comunidade no mural, na lista de
+  moradores e no avatar. Trocar o nome de exibição nunca quebra o login.
+
+Um campo só seria mais simples, mas dois separam o que muda do que é estável: o
+rosto social (display_name) evolui sem mexer na chave de acesso (username). Para
+a pessoa menos técnica, o onboarding ainda pede só "seu nome"; o nome de exibição
+é um extra opcional.
+
+### E-mail descartado, não "opcional"
+
+A RFC_002 (D6) já dizia "e-mail opcional". Este RFC vai além: **sem coluna de
+e-mail**. Sem SMTP, e-mail não serve para login (agora é por nome), não serve
+para convite (é por link/QR) e não serve para recuperação (é mediada pelo
+zelador). Manter um campo opcional e morto convida deriva. Removemos junto todo
+o aparato de confirmação de e-mail (token de confirmação, "conta pendente até
+confirmar o e-mail"): no fluxo só-por-convite, a conta fica pendente até a
+pessoa **aceitar o convite** (escolher nome e senha), não até confirmar e-mail.
+
+Se um dia uma comunidade tiver SMTP próprio e quiser notificações opt-in, um
+e-mail volta como dado de perfil opcional, nunca como identidade e nunca como
+trava de acesso.
+
+### Convite sem e-mail
+
+Criar um convite não pede e-mail nenhum. O zelador gera um convite (papel padrão
+**morador**), o sistema devolve um link com token (e o QR na tela), o zelador
+entrega pelo canal que a comunidade já usa. A pessoa abre o link, escolhe nome
+de usuário, nome de exibição (opcional) e senha. Isso **é** a criação da conta.
+
+### Recuperação mediada pelo zelador
+
+Sem e-mail, não há "esqueci minha senha" automático. Quem perdeu o acesso fala
+com quem cuida da máquina. O zelador gera um **link de redefinição** (mesma infra
+de token do convite), visível nas telas de Moradores/Conta, e entrega pelo mesmo
+canal dos convites. A pessoa abre o link e define uma senha nova.
+
+Restaurar **acesso à conta** é cuidado-da-máquina, coerente com "o zelador tem
+zero autoridade sobre dados": o link deixa a pessoa entrar de novo e trocar a
+senha; ele **não** dá ao zelador a senha, os dados nem a casa de ninguém. O
+zelador continua sem atalho para a casa de quem quer que seja.
+
+### Porta para federação
+
+O `username` é modelado como um **handle** seguro para virar endereço
+(`nome@tekoa`) quando a federação chegar: sem espaços, conjunto de caracteres
+restrito. Não assumimos caixa única na identidade; a federação se acopla a um
+núcleo estável, nunca o contrário.
+
+---
+
+## 5. Convenção de nomes (uma fonte de verdade)
 
 O Tainá mistura três línguas; este RFC fixa **quando cada uma vale**, para não misturar ad-hoc:
 
@@ -61,7 +126,7 @@ O Tainá mistura três línguas; este RFC fixa **quando cada uma vale**, para n�
 
 ---
 
-## 5. Transparência como pilar central (não é feature)
+## 6. Transparência como pilar central (não é feature)
 
 A transparência é o **esforço comunitário de verdade**, legibilidade como liberação. A comunidade pode _ver e entender_ tudo o que o sistema e seus membros fazem, em pt-BR simples e acessível (WCAG). Três camadas, todas no MVP:
 
@@ -75,7 +140,7 @@ A transparência é o **esforço comunitário de verdade**, legibilidade como li
 
 ---
 
-## 6. Privacidade honesta ("trusted host")
+## 7. Privacidade honesta ("trusted host")
 
 Hoje **não há criptografia**: o Ybira guarda bytes em texto puro; o `file_hash` SHA-256 é para dedup, não proteção. Quem opera a caixa tem acesso físico/root.
 
@@ -85,7 +150,7 @@ Só uma futura criptografia **E2E** no Ybira (chaves que o host não lê, _não_
 
 ---
 
-## 7. Governança coletiva (Assembleia), expansão de escopo
+## 8. Governança coletiva (Assembleia), expansão de escopo
 
 > **Além do MVP do RFC_002**, que cortou governança explicitamente. Só começa após aceite deste RFC.
 
@@ -94,11 +159,11 @@ O RFC_002 não tem decisão coletiva: zelador decide convites/cota/remoção soz
 - **Transparência primeiro** (Fase 2, mural): todo poder do zelador é visível. É o cheque comunitário mais barato e a fundação.
 - **Decisão coletiva depois** (Fase 3, assembleia): atos sensíveis viram **propostas** que a comunidade vê e vota.
 
-**Esboço técnico:** contexto novo `Taina.Assembleia` (`@behaviour` próprio). `Proposal` (`type` é um de remove_member/appoint_zelador/revoke_zelador/change_quota, `payload`, `proposer_id`, `status` é um de open/passed/rejected/expired, `closes_at`) + `Vote` (único por `(proposal_id, ava_id)`). **Divisão de ações:** com voto = atos que afetam permanentemente uma pessoa (remover, nomear/destituir zelador); diretos-mas-registrados = convite, cota. **Regra:** maioria simples dos votos + quórum `ceil(moradores/2)`; expira por worker Oban. Na aprovação, a ação só executa com a proposta aprovada como _token_ de autoridade, **não há caminho unilateral**. Corte mínimo viável: só `remove_member`, provando o ciclo. (Nomear zelador via proposta é como a comunidade ganha mais zeladores além dos convidados na Fase 1.)
+**Esboço técnico:** contexto novo `Taina.Assembleia` (`@behaviour` próprio). `Proposal` (`type` é um de remove*member/appoint_zelador/revoke_zelador/change_quota, `payload`, `proposer_id`, `status` é um de open/passed/rejected/expired, `closes_at`) + `Vote` (único por `(proposal_id, ava_id)`). **Divisão de ações:** com voto = atos que afetam permanentemente uma pessoa (remover, nomear/destituir zelador); diretos-mas-registrados = convite, cota. **Regra:** maioria simples dos votos + quórum `ceil(moradores/2)`; expira por worker Oban. Na aprovação, a ação só executa com a proposta aprovada como \_token* de autoridade, **não há caminho unilateral**. Corte mínimo viável: só `remove_member`, provando o ciclo. (Nomear zelador via proposta é como a comunidade ganha mais zeladores além dos convidados na Fase 1.)
 
 ---
 
-## 8. Decisões
+## 9. Decisões
 
 - **D1**: Duas zonas (`:casa`/`:praca`) via `Ecto.Enum` em `Ybira.File`/`Folder`; padrão `:casa`; backfill existente -> `:praca`; zona de pasta não cascateia.
 - **D2**: Aplicar a regra de leitura (`praça OU dono OU permissão`) em **todo** caminho de leitura do Ybira/Jaci e no controller de download/thumbnail (o thumbnail é o vazamento nº 1). `get_file` devolve `:forbidden` (diferente de `:not_found`) para casa não autorizada.
@@ -108,11 +173,15 @@ O RFC_002 não tem decisão coletiva: zelador decide convites/cota/remoção soz
 - **D6**: Transparência (mural + painel + substrato) é pilar de MVP; **soberana, nunca telefona para casa**; acessibilidade WCAG faz parte dela.
 - **D7**: Privacidade da casa é promessa de software+confiança, não criptográfica.
 - **D8**: Governança coletiva (assembleia) é expansão pós-RFC_002; transparência primeiro, voto depois.
+- **D9**: Identidade = `username` (handle único na tekoa, login por nome) + `display_name` opcional (rosto social). Login por username, nunca por e-mail. O `username` é modelado como handle (sem espaços, charset restrito) para acoplar `nome@tekoa` na federação futura.
+- **D10**: E-mail **descartado por completo** (sem SMTP, RFC_002 D6), não apenas "opcional". Remover a coluna de e-mail e todo o aparato de confirmação de e-mail (token de confirmação, gate de ativação por e-mail). A conta fica pendente até o aceite do convite, não até confirmar e-mail. E-mail só volta no futuro como dado de perfil opt-in, se houver SMTP.
+- **D11**: Recuperação mediada pelo zelador via **link de redefinição** (reaproveita a infra de token do convite), exposto nas telas de Moradores/Conta. Restaurar acesso à conta é cuidado-da-máquina; o link não dá ao zelador senha, dados nem casa de ninguém.
 
 ---
 
-## 9. Impacto no RFC_002 / ROADMAP
+## 10. Impacto no RFC_002 / ROADMAP
 
 - `RFC_002_MVP.md` e `RFC_ARQUITETURA.md` devem ser emendados para introduzir o modelo de zonas, o reframe zelador/morador (com múltiplos zeladores), a convenção de nomes e o pilar de transparência.
+- **Identidade (seção 4):** a RFC_002 D6 e a linha "E-mail obrigatório" da tabela de cortes diziam "e-mail opcional"; este RFC vai além e **descarta o e-mail**, com identidade por `username` e login por nome. A RFC_002 deve apontar para esta seção em vez de manter "e-mail opcional".
 - `ROADMAP.md` deve encaixar **mural + painel** no MVP e **assembleia** como trilha própria.
 - Onde código e `tekoa` divergirem, `tekoa` vence, corrigir a deriva, não inventar uma terceira resposta.
