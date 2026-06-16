@@ -144,6 +144,11 @@ Decisão: Postgres 16, tunado para Pi (shared_buffers baixo, ver compose).
 Admin manda o link pelo canal que a comunidade já usa. Swoosh entra como
 adapter opcional se a comunidade tiver SMTP próprio.
 
+> Atualização (RFC_003, seção 4): o e-mail deixou de ser "opcional" e foi
+> **descartado**. A identidade passou a ser o `username` (login por nome) e a
+> recuperação é mediada pelo zelador via link de redefinição. Esta D6 vale só
+> pela parte de convites por link/QR; para identidade, ver RFC_003.
+
 ### D7, Deploy é produto: Compose primeiro, imagem de appliance depois
 
 - **Deploy v1 (MVP):** `install.sh` + Docker Compose + Caddy (TLS automático)
