@@ -72,7 +72,10 @@ errado e você precisa voltar para o último backup bom.
 
 1. **Localize o arquivo de backup.** Encontre o `taina-backup-*.tar.gz` mais
    recente que você confia (no disco USB, no destino remoto, ou em `BACKUP_DIR`).
-   Anote o caminho completo dele.
+   Anote o caminho completo dele. Se você não sabe onde os backups ficam, esse é
+   um detalhe que quem configurou o backup deveria ter anotado (o disco USB, o
+   caminho de rede ou o serviço de sincronização remota): procure essa pessoa
+   antes de seguir, em vez de adivinhar.
 
 2. **Coloque o arquivo onde o Tainá enxerga.** Copie o `.tar.gz` para o diretório
    de backups montado no container (o `BACKUP_DIR`, por padrão o volume mapeado
@@ -104,11 +107,20 @@ errado e você precisa voltar para o último backup bom.
    Taina.Nhaman.Backup.restore("/app/backups/taina-backup-AAAAMMDDTHHMMSSZ.tar.gz")
    ```
 
-   Espere o retorno `{:ok, :restored}`. Essa função extrai o arquivo, roda o
-   `pg_restore --clean --if-exists` no banco e recoloca a árvore de `storage/`.
+   Essa função extrai o arquivo, roda o `pg_restore --clean --if-exists` no banco
+   e recoloca a árvore de `storage/`. Se você vir exatamente `{:ok, :restored}`,
+   a restauração deu certo. Qualquer outra resposta (uma mensagem de erro, um
+   `{:error, ...}`) significa que falhou: não siga para o próximo passo, leia o
+   erro e resolva a causa (ou peça ajuda) antes de continuar.
 
    Caminho manual (só o banco), caso precise restaurar apenas o Postgres a partir
-   do `db.dump` extraído:
+   do `db.dump`. Primeiro extraia só o `db.dump` de dentro do arquivo de backup:
+
+   ```sh
+   tar -xzf taina-backup-AAAAMMDDTHHMMSSZ.tar.gz db.dump
+   ```
+
+   Depois rode o restore a partir do `db.dump` extraído:
 
    ```sh
    pg_restore --clean --if-exists --no-owner --no-privileges \
