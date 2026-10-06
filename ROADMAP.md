@@ -206,6 +206,12 @@ nada de codar novo: é **publicar e provar**.
    que ser público para o guia funcionar.
 3. **Push do `main`.** Existe commit local ainda não enviado.
 
+> O smoke test da imagem (`.github/workflows/docker-smoke.yml` no repo `taina`)
+> roda em toda tag `v*` e sobe o container de verdade: migrações no boot,
+> `/health` respondendo, e os dois diretórios de dados graváveis pelo usuário
+> `nobody`. Ele não substitui o ensaio manual, mas garante que o roteiro de
+> instalação não quebrou antes de a pessoa tentar.
+
 ### Provas de que funciona (o gate do MVP)
 
 4. **Instalação limpa e cronometrada** numa máquina real, seguindo só o
@@ -219,13 +225,11 @@ nada de codar novo: é **publicar e provar**.
 
 ### Recomendado, não bloqueia
 
-- `SECURITY.md` e template de issue de bug. Um projeto AGPL que guarda os
-  arquivos de uma comunidade precisa de um lugar declarado para|reportar
-  vulnerabilidade.
-- Corrigir o drift de docs: `ROADMAP.md` (esta revisão), e os links de guia nas
-  duas READMEs.
 - Assentar o `docs/ui-prompts/` no repositório (slice 01 responsive pass, slice
-  04 Nhaman cuidados).
+  04 Nhaman cuidados). Hoje ele vive no `.git/info/exclude`, então quem chega
+  pelo GitHub não vê a especificação que orientou o build da interface.
+- Conferir os guias citados nas READMEs do `taina` e do `oka`: alguns apontam
+  para caminhos que não existem mais.
 
 ### Ordem sugerida
 
