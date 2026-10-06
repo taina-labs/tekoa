@@ -7,6 +7,24 @@ Este espaço concentra documentação técnica, guias de contribuição, tutoria
 
 ---
 
+## Guias do operador
+
+Para colocar o Tainá no ar, comece por
+[instalação](guias/instalacao.md).
+
+- [Instalação](guias/instalacao.md): colocar no ar do zero, em menos de 30
+  minutos.
+- [Acesso remoto](guias/acesso-remoto.md): Tailscale, Headscale, WireGuard,
+  domínio público.
+- [Backup e restauração](guias/runbook-backup-restore.md): procedimento e
+  ensaio (drill).
+- [Hardware](guias/compras-hardware.md): o que comprar e como montar.
+
+O [roadmap](ROADMAP.md) diz o que está pronto e o que ainda falta para o
+`0.1.0`.
+
+---
+
 ## Como Contribuir
 
 1. Leia o [Guia de Contribuição](CONTRIBUTING.md) para entender como colaborar.
