@@ -99,9 +99,23 @@ tailscale cert taina.seudominio.ts.net
 
 Com isso o navegador confia no certificado sem você instalar nada nos aparelhos.
 É exatamente o que o Home Assistant faz, e é o caminho mais tranquilo para
-comunidades não-técnicas. Quando você usa esse caminho, deixe `TAINA_DOMAIN`
+comunidades não-técnicas. A Forma A funciona sem ajustes: o Tainá publica a
+porta 4000 só para a própria caixa (em `127.0.0.1`), que é exatamente onde o
+`tailscale serve` procura. Quando você usa esse caminho, deixe `TAINA_DOMAIN`
 vazio no `.env`: o Caddy não precisa emitir certificado, o Tailscale já
 resolveu.
+
+Falta um ajuste: o `PHX_HOST`. É com ele que o app monta os links de convite e
+os QR codes, e numa caixa sem domínio ele vale `localhost` por padrão. No
+`.env`, troque para o nome MagicDNS que você anotou no passo 2:
+
+```
+PHX_HOST=taina.seudominio.ts.net
+```
+
+Depois rode `./update.sh` na pasta do Oka, para o app subir com o valor novo.
+Sem isso, os convites saem com um endereço que só funciona dentro da própria
+caixa, e o celular de quem você convidar não vai abrir nada.
 
 ### Verificando
 

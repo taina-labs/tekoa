@@ -39,6 +39,14 @@ remoto e disco de backup são para quando a comunidade for usar de verdade.
   instale o [Windows Terminal](https://aka.ms/terminal) ou use o
   PowerShell. No macOS, o aplicativo Terminal já existe.
 - Docker, com o plugin Compose. É o [Passo 1](#passo-1-instalar-o-docker).
+- `openssl`, que o `install.sh` usa para sortear as senhas. No Raspberry Pi OS
+  e no Linux ele costuma já estar instalado (`sudo apt-get install -y openssl`
+  no Debian e no Ubuntu, caso não esteja). No macOS vem com o sistema. No
+  Windows, instalar o [Git for Windows](https://git-scm.com/download/win) traz
+  o `openssl` junto.
+- `git`, só se você for montar a imagem do código-fonte
+  ([Passo 3](#passo-3-montar-a-imagem-do-tainá)). Quem usa a imagem pronta do
+  [Passo 4](#passo-4-instalar) não precisa dele.
 - Storage de verdade: um pendrive, um disco externo ou uma partição do próprio
   disco que não seja do sistema.
 
@@ -101,7 +109,10 @@ cd oka
 
 Sem o `git` instalado? Baixe o ZIP da
 [página do Oka](https://github.com/taina-labs/oka) e descompacte. O resto do
-guia funciona igual.
+guia funciona igual, com uma exceção: se você precisar montar a imagem na sua
+própria caixa ([Passo 3](#passo-3-montar-a-imagem-do-tainá)), o `git` é
+necessário de verdade, porque o script baixa o código do Tainá de um
+repositório.
 
 ## Passo 3: montar a imagem do Tainá
 
@@ -247,27 +258,34 @@ procedimento inteiro, incluindo como restaurar e como ensaiar. O resumo:
 
 1. **Monte um disco externo** na caixa. O ponto de montagem precisa existir
    quando o Docker sobe. Por exemplo, um disco em `/mnt/backup`.
-2. **Aponte o backup para ele.** No `docker-compose.yml`, troque a linha do
-   volume de backup:
+2. **Dê o disco ao Tainá.** O container roda como um usuário sem privilégios
+   (`nobody`, uid 65534), então a pasta precisa pertencer a ele, senão o
+   backup falha na hora de escrever:
 
-   ```yaml
-   # antes
-   - backups_data:/app/backups
-
-   # depois
-   - /mnt/backup:/app/backups
+   ```sh
+   sudo chown 65534:65534 /mnt/backup
    ```
 
-   Um volume nomeado (`backups_data`) fica dentro do Docker e some com o
-   aparelho. Um caminho de disco (`/mnt/backup`) é o seu disco, e você pode
-   trocar, levar embora ou guardar em outro cômodo.
-3. **Ligue o backup.** No `.env`, mude a linha:
+3. **Aponte o backup para ele.** No `.env`, descomente a linha do caminho de
+   backup e coloque o seu disco:
+
+   ```
+   TAINA_BACKUP_DIR=/mnt/backup
+   ```
+
+   Sem essa linha, o backup mora num volume nomeado (`backups_data`) dentro do
+   Docker: fica no mesmo disco do sistema, e some com o aparelho. Um caminho
+   de disco é o seu disco, e você pode trocar, levar embora ou guardar em
+   outro cômodo. O mesmo vale para os arquivos de verdade: o
+   `TAINA_STORAGE_DIR` aponta a pasta de uploads para outro lugar (veja
+   ["Onde ficam meus arquivos"](#onde-ficam-meus-arquivos) mais abaixo).
+4. **Ligue o backup.** No `.env`, mude a linha:
 
    ```
    BACKUP_ENABLED=true
    ```
 
-4. **Suba de novo:**
+5. **Suba de novo:**
 
    ```sh
    ./update.sh
@@ -275,7 +293,7 @@ procedimento inteiro, incluindo como restaurar e como ensaiar. O resumo:
 
    A partir daí um backup é feito todo dia às 04:00 UTC.
 
-5. **Gere um agora e ensaie restaurar.** Um backup que nunca foi testado não é
+6. **Gere um agora e ensaie restaurar.** Um backup que nunca foi testado não é
    backup. O runbook tem o passo a passo do ensaio.
 
 Sobre a pasta de backup: uma cópia que mora no mesmo aparelho que ela protege
@@ -293,12 +311,29 @@ Ele baixa a versão nova, reinicia e confere a saúde. As migrações de banco
 rodam sozinhas no boot, então atualizar é seguro e você não precisa rodar
 nenhum comando no banco.
 
+Antes de mexer em qualquer coisa, o `update.sh` faz um backup do banco de
+dados por conta própria e guarda na pasta `rollback/`, dentro da pasta do
+Oka. Se o Tainá não voltar a ficar saudável, ele não te deixa no escuro:
+imprime os comandos exatos para voltar para a versão anterior, inclusive como
+devolver esse backup.
+
+Fique claro o que essa rede de proteção cobre: ela é só do banco de dados, é
+feita na hora e mora na própria caixa. Ela existe para o dia em que uma
+atualização sai errada, e não substitui o backup de verdade do
+[Passo 8](#passo-8-ligar-o-backup), que é diário, inclui os arquivos e mora
+fora da caixa. Os arquivos de storage não são mexidos pela atualização: ficam
+no volume ou no disco deles, intocados.
+
 Se você montou a imagem local no [Passo 3](#passo-3-montar-a-imagem-do-tainá),
 a atualização é local. Rode `./build-image.sh` antes, ou rode `./update.sh` e
 ele já reconstrói para você.
 
 Se algo der errado depois de atualizar, o `update.sh` diz como voltar para a
 versão anterior.
+
+Uma exceção a saber: uma caixa que já rodou uma versão antiga do compose pode
+ficar sem o papel de banco que o app usa hoje. Veja
+[O papel `taina_app` não existe numa caixa que já rodou antes](#o-papel-taina_app-não-existe-numa-caixa-que-já-rodou-antes).
 
 ## Quando algo dá errado
 
@@ -327,6 +362,33 @@ A causa mais comum é banco de dados ainda subindo. Espere um minuto e rode
 `./update.sh`, que só reinicia e reconfere a saúde. Se o erro se repetir, copie a saída
 dos logs e abra uma issue.
 
+Se os logs apontam para o papel `taina_app` (role que não existe, senha
+recusada) e a sua caixa já rodou uma versão antiga do compose, veja
+[O papel `taina_app` não existe numa caixa que já rodou antes](#o-papel-taina_app-não-existe-numa-caixa-que-já-rodou-antes).
+
+### O papel `taina_app` não existe numa caixa que já rodou antes
+
+O papel `taina_app`, que o app usa para falar com o banco, é criado pelo
+container do banco na primeira subida de um volume vazio. Uma caixa que já
+rodou um compose anterior a esse papel tem o volume pronto de um jeito em
+que o papel nunca foi criado, e instalar por cima não resolve: o script de
+criação só roda em volume novo.
+
+Sendo alpha, não há dado real em risco numa caixa de testes, e o caminho
+simples é recomeçar o volume:
+
+```sh
+docker compose down -v
+./install.sh
+```
+
+Atenção: o `down -v` apaga os volumes da caixa, incluindo o do storage. Se
+há arquivos ali que você queira guardar, copie para fora antes de rodar.
+
+Se a caixa precisa continuar de pé, a alternativa é criar o papel à mão,
+seguindo o `deploy/initdb/01-taina-app-role.sh` do Oka: é exatamente o que o
+banco roda num volume novo.
+
 ### `docker compose` diz que o comando não existe
 
 O plugin do Compose não está instalado. Veja a seção de instalação do
@@ -346,11 +408,23 @@ apontar para a caixa.
 
 ### Onde ficam meus arquivos
 
-No volume `storage_data`, dentro do Docker. Para enxergar de fora, monte o
-`storage_root` (`/app/storage` por padrão) num caminho do host, do mesmo jeito
-que o [Passo 8](#passo-8-ligar-o-backup) faz com os backups: troque
-`storage_data:/app/storage` por `/algum/caminho:/app/storage` no
-`docker-compose.yml`.
+Por padrão, num volume nomeado (`storage_data`) dentro do Docker. Para vê-los
+de fora, aponte uma pasta da sua máquina no `.env`, do mesmo jeito que o
+[Passo 8](#passo-8-ligar-o-backup) faz com os backups:
+
+```
+TAINA_STORAGE_DIR=/mnt/storage
+```
+
+Crie a pasta e dê a ela ao usuário do container antes de subir, senão o Tainá
+não consegue escrever:
+
+```sh
+sudo mkdir -p /mnt/storage
+sudo chown 65534:65534 /mnt/storage
+```
+
+Depois rode `./update.sh` para o app subir usando o caminho novo.
 
 Para o dia a dia, a tela **Saúde da comunidade** mostra o uso em linguagem
 comum, que é o jeito recomendado de olhar.
