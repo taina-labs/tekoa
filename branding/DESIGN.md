@@ -253,9 +253,10 @@ cards em `lg`, superfícies grandes em `xl`, pílulas para chips e badges em
 
 ### A casca autenticada (`.shell`)
 
-- **Mobile (até 767px):** `bottom-nav` fixa de 72px com 3 a 5 itens (Ybira,
-  Jaci, Nhaman/Saúde, depois Mural, depois conta). Ícone **e** rótulo sempre
-  visíveis. O conteúdo reserva espaço para a nav e nunca rola na horizontal.
+- **Mobile (até 767px):** `bottom-nav` fixa de 72px com 3 a 6 itens. No shell
+  cometido: Início, Arquivos, Fotos, Mural, Saúde, Conta. Ícone **e** rótulo
+  sempre visíveis, com o rótulo truncando em reticências em telas estreitas. O
+  conteúdo reserva espaço para a nav e nunca rola na horizontal.
 - **Desktop (768px+):** `sidebar` persistente de 248px com ícone e nome,
   `topbar` de 64px (busca global, notificações, perfil) e conteúdo com teto de
   largura.
