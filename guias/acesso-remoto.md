@@ -218,6 +218,24 @@ isso que, quando há acesso via Tailscale/Headscale, preferimos o certificado
 real do overlay. Use `tls internal` só como último recurso numa caixa de rede
 local pura, em que todo mundo está disposto a confiar na raiz uma vez.
 
+## O que o HTTPS destrava no app
+
+O navegador trata `http://` como origem insegura, e algumas coisas só existem em
+origem segura. Olhando o app:
+
+- **Área de transferência e Compartilhar**: `navigator.clipboard` e a Web Share
+  API só funcionam em HTTPS. No `http://taina.local` o Tainá cai no plano B
+  (mostrar o link para copiar com a mão), mas o botão nativo de compartilhar do
+  celular só aparece com TLS.
+- **Offline e service worker**: o cache offline do app não registra em `http`.
+- **Instalar como app no Android**: o Chrome exige origem segura para oferecer a
+  instalação. No iPhone, "Adicionar à Tela de Início" funciona mesmo em `http`;
+  no Android, sem HTTPS, o atalho abre numa aba comum, não em tela cheia.
+
+Ou seja: numa comunidade que só acessa pela rede local em `http://`, tudo
+funciona, mas o app instalado no Android e o modo offline ficam de fora. Se
+esses dois importam para vocês, configure o TLS pelo caminho desta página.
+
 ## Resumo e como escolher
 
 - Começou agora e a comunidade é não-técnica? **Tailscale**, com `tailscale
