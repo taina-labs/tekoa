@@ -13,6 +13,14 @@
 > conforme o código realmente mergesado, e a Fase 0 ganhou uma subdivisão
 > (operabilidade) que é o caminho crítico do lançamento. O gate do `0.1.0`
 > está isolado em [O que falta para o 0.1.0](#o-que-falta-para-o-010).
+>
+> **O que mudou depois do v3.1 (RFC 006):** a caixa deixou de usar PostgreSQL
+> com Row-Level Security. Ela agora guarda tudo num arquivo SQLite e o
+> isolamento entre comunidades passou a ser da camada da aplicação, coberto
+> por testes de isolamento que rodam em toda mudança. O núcleo estável foi
+> extraído para o kernel [Ypy](tecnico/RFC_006_KERNEL.md), de que a caixa já
+> depende. Onde este roadmap ainda cita RLS, a
+> [RFC 006](tecnico/RFC_006_KERNEL.md) é a fonte atual.
 
 ---
 
@@ -37,8 +45,9 @@ Princípios desta versão:
 - **PWA offline-first descartado.** App nativo de backup de fotos
   (candidato principal: **Flutter**; alternativa: **Tauri mobile**) vem no
   pós-MVP, atrás de uma API JSON.
-- **Stack:** Elixir 1.20 / OTP 28, Phoenix 1.8, PostgreSQL 18 com Row-Level
-  Security (isolamento por comunidade), Oban para jobs, libvips para mídia.
+- **Stack:** Elixir 1.20 / OTP 28, Phoenix 1.8, SQLite (um arquivo por caixa,
+  isolamento entre comunidades na camada da aplicação), Oban para jobs, libvips
+  para mídia. O núcleo estável mora no kernel [Ypy](tecnico/RFC_006_KERNEL.md).
 
 ---
 
@@ -204,7 +213,6 @@ nada de codar novo: é **publicar e provar**.
    novo no registry do GitHub nasce privado. Se ele ficar privado, o
    `docker compose pull` falha com `denied` mesmo com a release publicada. Tem
    que ser público para o guia funcionar.
-3. **Push do `main`.** Existe commit local ainda não enviado.
 
 > O smoke test da imagem (`.github/workflows/docker-smoke.yml` no repo `taina`)
 > roda em toda tag `v*` e sobe o container de verdade: migrações no boot,
@@ -233,7 +241,7 @@ nada de codar novo: é **publicar e provar**.
 
 ### Ordem sugerida
 
-1. Push do `main`, tag de release, imagem publicada, pacote público.
+1. Tag de release, imagem publicada, pacote público.
 2. Instalar numa máquina real do zero, cronometrando, e consertar o que travar.
 3. Drill de restore e ensaio do update.
 4. Benchmark no Pi 5.
@@ -267,7 +275,9 @@ do MVP, como produto separado. Ver a
 Em paralelo ao MVP corre o **kernel Ypy** ([RFC 006](tecnico/RFC_006_KERNEL.md)):
 o núcleo estável do Tainá (identidade, records, modelo social, mural e
 assembleia) extraído para uma biblioteca própria, de que o box, a plataforma
-hospedada e os produtos futuros dependem.
+hospedada e os produtos futuros dependem. O box já roda sobre ele: a caixa
+guarda tudo num arquivo SQLite, o isolamento entre comunidades é da camada da
+aplicação (coberto por testes) e o kernel é uma dependência do Hex (`ypy`).
 
 ---
 

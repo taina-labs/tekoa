@@ -39,7 +39,7 @@ remoto e disco de backup são para quando a comunidade for usar de verdade.
   instale o [Windows Terminal](https://aka.ms/terminal) ou use o
   PowerShell. No macOS, o aplicativo Terminal já existe.
 - Docker, com o plugin Compose. É o [Passo 1](#passo-1-instalar-o-docker).
-- `openssl`, que o `install.sh` usa para sortear as senhas. No Raspberry Pi OS
+- `openssl`, que o `install.sh` usa para sortear o segredo da sessão. No Raspberry Pi OS
   e no Linux ele costuma já estar instalado (`sudo apt-get install -y openssl`
   no Debian e no Ubuntu, caso não esteja). No macOS vem com o sistema. No
   Windows, instalar o [Git for Windows](https://git-scm.com/download/win) traz
@@ -148,11 +148,11 @@ rode `./build-image.sh` de novo e depois `./update.sh`. Está descrito em
 O que acontece, em ordem:
 
 1. O script confere se o Docker está presente.
-2. Ele cria um arquivo `.env` com duas senhas sorteadas: uma do banco de dados
-   e uma que assina as sessões. Guarde esse arquivo com cuidado. Quem tem ele
-   tem acesso à caixa.
-3. Ele baixa a imagem do Tainá e sobe os três serviços: banco de dados,
-   aplicação e o proxy reverso.
+2. Ele cria um arquivo `.env` com um segredo sorteado, que assina as sessões.
+   Guarde esse arquivo com cuidado. Quem tem ele tem acesso à caixa.
+3. Ele baixa a imagem do Tainá e sobe os dois serviços: a aplicação (com o
+   banco da comunidade, um arquivo SQLite que o app mesmo cuida) e o proxy
+   reverso.
 4. Ele espera o aplicativo responder que está saudável, o que prova que o app
    subiu e que o banco está acessível. Isso leva cerca de um minuto na primeira
    vez.
@@ -331,10 +331,6 @@ ele já reconstrói para você.
 Se algo der errado depois de atualizar, o `update.sh` diz como voltar para a
 versão anterior.
 
-Uma exceção a saber: uma caixa que já rodou uma versão antiga do compose pode
-ficar sem o papel de banco que o app usa hoje. Veja
-[O papel `taina_app` não existe numa caixa que já rodou antes](#o-papel-taina_app-não-existe-numa-caixa-que-já-rodou-antes).
-
 ## Quando algo dá errado
 
 ### `ERRO: imagem do Tainá indisponível`
@@ -358,24 +354,16 @@ Veja os logs:
 docker compose logs -f app
 ```
 
-A causa mais comum é banco de dados ainda subindo. Espere um minuto e rode
-`./update.sh`, que só reinicia e reconfere a saúde. Se o erro se repetir, copie a saída
-dos logs e abra uma issue.
+A causa mais comum é a primeira migração do banco ainda rodando. Espere um
+minuto e rode `./update.sh`, que só reinicia e reconfere a saúde. Se o erro se
+repetir, copie a saída dos logs e abra uma issue.
 
-Se os logs apontam para o papel `taina_app` (role que não existe, senha
-recusada) e a sua caixa já rodou uma versão antiga do compose, veja
-[O papel `taina_app` não existe numa caixa que já rodou antes](#o-papel-taina_app-não-existe-numa-caixa-que-já-rodou-antes).
+### A caixa rodou o compose antigo (com PostgreSQL)
 
-### O papel `taina_app` não existe numa caixa que já rodou antes
-
-O papel `taina_app`, que o app usa para falar com o banco, é criado pelo
-container do banco na primeira subida de um volume vazio. Uma caixa que já
-rodou um compose anterior a esse papel tem o volume pronto de um jeito em
-que o papel nunca foi criado, e instalar por cima não resolve: o script de
-criação só roda em volume novo.
-
-Sendo alpha, não há dado real em risco numa caixa de testes, e o caminho
-simples é recomeçar o volume:
+O Tainá agora guarda tudo num arquivo SQLite; não há mais serviço de banco de
+dados. Uma caixa que rodou o compose anterior tem os dados num volume
+`postgres_data`, que a versão nova não lê. Sendo alpha, não há dado real a
+perder, então recomece:
 
 ```sh
 docker compose down -v
@@ -384,10 +372,6 @@ docker compose down -v
 
 Atenção: o `down -v` apaga os volumes da caixa, incluindo o do storage. Se
 há arquivos ali que você queira guardar, copie para fora antes de rodar.
-
-Se a caixa precisa continuar de pé, a alternativa é criar o papel à mão,
-seguindo o `deploy/initdb/01-taina-app-role.sh` do Oka: é exatamente o que o
-banco roda num volume novo.
 
 ### `docker compose` diz que o comando não existe
 
@@ -425,6 +409,11 @@ sudo chown 65534:65534 /mnt/storage
 ```
 
 Depois rode `./update.sh` para o app subir usando o caminho novo.
+
+O banco da comunidade é um arquivo (`taina.db`) num volume nomeado (`db_data`),
+do mesmo jeito. Ele é pequeno e o backup do [Passo 8](#passo-8-ligar-o-backup)
+já o inclui, então não precisa mexer nele à mão: o `TAINA_DB_DIR` existe só
+para quem quiser guardá-lo num disco próprio.
 
 Para o dia a dia, a tela **Saúde da comunidade** mostra o uso em linguagem
 comum, que é o jeito recomendado de olhar.

@@ -26,9 +26,9 @@ Leia o runbook inteiro uma vez com calma antes de precisar dele de verdade.
 Cada backup é um único arquivo `.tar.gz` com nome no formato
 `taina-backup-AAAAMMDDTHHMMSSZ.tar.gz` (data e hora em UTC). Dentro dele há:
 
-- `db.dump`: um dump do PostgreSQL no formato custom (gerado pelo `pg_dump
---format=custom`), com todo o banco da comunidade (contas, pastas, metadados
-  dos arquivos, permissões).
+- `db.dump`: um snapshot do banco SQLite (gerado pelo `VACUUM INTO`), um
+  arquivo de banco completo com todo o banco da comunidade (contas, pastas,
+  metadados dos arquivos, permissões).
 - `storage/`: a árvore inteira de arquivos do Ybira (os arquivos e fotos de
   verdade que as pessoas enviaram).
 
@@ -60,9 +60,9 @@ outro lugar, ou sincronização para um destino remoto).
 
 ## Aviso: restauração é destrutiva
 
-A restauração usa `pg_restore --clean --if-exists`, que **apaga e recria** os
-objetos do banco antes de recolocar os dados do backup. Tudo que estiver no
-banco atual e não estiver no backup é perdido.
+A restauração **substitui o arquivo do banco** pelo snapshot do backup e troca
+a árvore de `storage/` inteira. Tudo que estiver no banco atual e não estiver no
+backup é perdido.
 
 Por isso, restaure só quando tiver certeza, e de preferência tire um backup do
 estado atual antes (mesmo que seja um estado ruim, ele pode conter algo que você
@@ -85,15 +85,23 @@ errado e você precisa voltar para o último backup bom.
    de backups montado no container (o `BACKUP_DIR`, por padrão `/app/backups`;
    no host, é o caminho do seu `TAINA_BACKUP_DIR`).
 
-3. **Tire o mundo de fora, sem derrubar o app.** Durante a restauração você não
-   quer ninguém escrevendo no banco. O comando de restauração roda dentro do
-   container do app, então o app precisa continuar no ar: não rode `docker
-   compose stop app`. A porta de entrada da caixa é o proxy. Pare só ele, que
-   o app e o banco seguem de pé:
+3. **Tire um backup de segurança do estado atual** (recomendado), caso precise
+   voltar atrás da própria restauração. O app está de pé aqui, então a chamada
+   roda direto nele:
 
    ```sh
-   docker compose stop caddy
-   # o app e o banco precisam continuar de pé:
+   docker compose exec app /app/bin/taina eval 'Taina.Nhaman.Backup.run()'
+   ```
+
+   O novo `.tar.gz` aparece no diretório de backups.
+
+4. **Pare o app e o proxy.** A restauração substitui o arquivo do banco, e o
+   app o mantém aberto enquanto está de pé: nada pode estar lendo ou escrevendo
+   nele na hora da troca. Pare os dois:
+
+   ```sh
+   docker compose stop caddy app
+   # confirme que pararam:
    docker compose ps
    ```
 
@@ -106,21 +114,12 @@ errado e você precisa voltar para o último backup bom.
    tailscale serve off
    ```
 
-4. **Tire um backup de segurança do estado atual** (recomendado), caso precise
-   voltar atrás da própria restauração:
+5. **Restaure.** Com o app parado, rode a função de restauração do Tainá num
+   container avulso da mesma imagem (ele monta os mesmos volumes, e nada mais
+   está usando o banco):
 
    ```sh
-   docker compose exec app /app/bin/taina eval 'Taina.Nhaman.Backup.run()'
-   ```
-
-   O novo `.tar.gz` aparece no diretório de backups.
-
-5. **Restaure.** Há dois caminhos. O recomendado usa a própria função do Tainá,
-   que cuida do banco e do storage de uma vez, e roda dentro do container do
-   app:
-
-   ```sh
-   docker compose exec app /app/bin/taina eval 'Taina.Nhaman.Backup.restore("/app/backups/taina-backup-AAAAMMDDTHHMMSSZ.tar.gz")'
+   docker compose run --rm app /app/bin/taina eval 'Taina.Nhaman.Backup.restore("/app/backups/taina-backup-AAAAMMDDTHHMMSSZ.tar.gz")'
    ```
 
    O `eval` roda a chamada e imprime o resultado. Se você vir exatamente
@@ -134,52 +133,34 @@ errado e você precisa voltar para o último backup bom.
    avulso, ou com o app parado, não existe node nenhum para conectar e o
    comando falha. O `eval` roda a chamada na hora, sem depender disso.
 
-   Enquanto o restore roda, o app pode reclamar nos logs: as tabelas estão
-   sendo trocadas embaixo dele. É esperado, e ele se recompõe quando o
-   restore termina. Essa função extrai o arquivo, roda o `pg_restore --clean
-   --if-exists` no banco e recoloca a árvore de `storage/`. O dono das
-   tabelas volta do jeito que está gravado no dump, que é o mesmo de antes
-   do desastre.
+   Como o app está parado, não há nada reclamando nos logs: a troca acontece
+   com o banco quieto. Essa função extrai o arquivo, substitui o arquivo do
+   banco pelo snapshot e recoloca a árvore de `storage/`.
 
-   Caminho manual (só o banco), caso precise restaurar apenas o Postgres a
-   partir do `db.dump`. Primeiro extraia só o `db.dump` de dentro do arquivo
-   de backup. Faça de dentro do container, para funcionar tanto com volume
-   nomeado quanto com disco montado (o container traz o `tar` e o cliente do
-   PostgreSQL):
+   Por que o app fica parado e a restauração roda num container avulso: o banco
+   é um arquivo, e o app o mantém aberto enquanto está de pé. Trocar o arquivo
+   embaixo de um app no ar perderia escrita e corromperia o banco. Com o app
+   parado e um container avulso rodando o `eval`, a troca é segura.
 
-   ```sh
-   docker compose exec app sh -c 'cd /app/backups && tar -xzf taina-backup-AAAAMMDDTHHMMSSZ.tar.gz db.dump'
-   ```
-
-   Depois rode o restore a partir do `db.dump` extraído. Note a conexão: o
-   restore manual precisa do usuário administrador do banco (o
-   `BACKUP_DATABASE_URL`, que já existe dentro do container), e não do
-   `DATABASE_URL` que o app usa. A variável existe dentro do container, e
-   não na sua shell de host, então deixe o `sh -c` expandi-la lá dentro (o
-   mesmo jeito do passo de extração acima):
+   Caminho manual (só o banco), caso precise restaurar apenas o arquivo do
+   banco a partir do `db.dump`. Com o app parado, extraia o `db.dump` e copie-o
+   por cima, tudo dentro de um container avulso (funciona tanto com volume
+   nomeado quanto com disco montado):
 
    ```sh
-   docker compose exec app sh -c 'pg_restore --clean --if-exists --no-privileges --dbname "$BACKUP_DATABASE_URL" /app/backups/db.dump'
+   docker compose run --rm app sh -c 'cd /app/backups && tar -xzf taina-backup-AAAAMMDDTHHMMSSZ.tar.gz db.dump && cp -f db.dump /app/data/taina.db'
    ```
-
-   Um detalhe: não acrescente `--no-owner` a esse comando. O dump gravado
-   pelo backup guarda o dono dos objetos, e é ele que repõe a propriedade.
-   Com `--no-owner`, tudo nasce dono do usuário da conexão de backup, o
-   `taina_app` deixa de ser dono do próprio banco, e o sintoma é estranho: o
-   app sobe, mas nada aparece, porque ele não é dono das tabelas que
-   precisa ler.
 
 6. **Verifique antes de reabrir.** Confira que os dados voltaram (ver a seção de
    verificação abaixo).
 
-7. **Devolva o acesso.** O app nunca chegou a parar; o que estava parado era o
-   proxy:
+7. **Devolva o acesso.** Suba o app e o proxy de novo:
 
    ```sh
-   docker compose start caddy
+   docker compose up -d
    ```
 
-   Se você desligou o `tailscale serve` no passo 3, religue:
+   Se você desligou o `tailscale serve` no passo 4, religue:
 
    ```sh
    tailscale serve --bg 4000
@@ -197,8 +178,8 @@ errado e você precisa voltar para o último backup bom.
 O Tainá tem uma verificação de restauração que roda no CI a cada mudança, então
 você não precisa torcer para o backup funcionar: ele é exercitado de verdade.
 
-- **No CI:** o job de backup-restore instala o cliente `postgresql-client-18`,
-  cria um banco, e roda `mix taina.backup.verify`. Essa tarefa escreve um
+- **No CI:** o job de backup-restore cria um banco SQLite de desenvolvimento e
+  roda `mix taina.backup.verify`. Essa tarefa escreve um
   marcador único no banco e no storage, faz um backup, **destrói** os dados, faz
   o restore, e confirma que o marcador voltou idêntico nos dois lugares. Se o
   ciclo de backup/restore quebrar, o CI fica vermelho.
@@ -221,8 +202,8 @@ a fazer).
 
 - [ ] A pessoa consegue localizar o arquivo de backup mais recente sozinha.
 - [ ] A pessoa copia o arquivo para o diretório de backups do Tainá.
-- [ ] A pessoa bloqueia o acesso de fora sem derrubar o app
-      (`docker compose stop caddy`).
+- [ ] A pessoa para o app e o proxy (`docker compose stop caddy app`) antes de
+      restaurar.
 - [ ] A pessoa entende o aviso de que a restauração é destrutiva.
 - [ ] A pessoa executa o restore e vê o `{:ok, :restored}`.
 - [ ] A pessoa sobe o app de novo e confirma `/health` ok.
