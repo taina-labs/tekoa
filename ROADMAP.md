@@ -258,11 +258,16 @@ a bugs de instalação cai muito quando você já/installou você mesmo antes.
 6. **Assembleia** (governança coletiva): Sensitive viram propostas votadas. Fora
    do MVP do RFC 002, detalhado na seção 8 da RFC 003.
 7. **Imagem de appliance NixOS** para Raspberry Pi.
-8. **Tainá Hospedada**: instância gerenciada multi-tenant (modelo Penpot).
+8. **Tainá Hospedada**: frota de caixas por Tekoa (modelo Penpot), sobre o kernel Ypy.
 
 O produto institucional para universidades foi avaliado e **adiado** para depois
 do MVP, como produto separado. Ver a
 [RFC 004](tecnico/RFC_004_PRODUTO_UNIVERSIDADE.md).
+
+Em paralelo ao MVP corre o **kernel Ypy** ([RFC 006](tecnico/RFC_006_KERNEL.md)):
+o núcleo estável do Tainá (identidade, records, modelo social, mural e
+assembleia) extraído para uma biblioteca própria, de que o box, a plataforma
+hospedada e os produtos futuros dependem.
 
 ---
 
