@@ -102,18 +102,18 @@ Com isso o navegador confia no certificado sem você instalar nada nos aparelhos
 comunidades não-técnicas. A Forma A funciona sem ajustes: o Tainá publica a
 porta 4000 só para a própria caixa (em `127.0.0.1`), que é exatamente onde o
 `tailscale serve` procura. Quando você usa esse caminho, deixe `TAINA_DOMAIN`
-vazio no `.env`: o Caddy não precisa emitir certificado, o Tailscale já
+vazio no `taina.conf`: o Caddy não precisa emitir certificado, o Tailscale já
 resolveu.
 
 Falta um ajuste: o `PHX_HOST`. É com ele que o app monta os links de convite e
 os QR codes, e numa caixa sem domínio ele vale `localhost` por padrão. No
-`.env`, troque para o nome MagicDNS que você anotou no passo 2:
+`taina.conf`, troque para o nome MagicDNS que você anotou no passo 2:
 
 ```
 PHX_HOST=taina.seudominio.ts.net
 ```
 
-Depois rode `./update.sh` na pasta do Oka, para o app subir com o valor novo.
+Depois rode `taina update` na pasta do Oka, para o app subir com o valor novo.
 Sem isso, os convites saem com um endereço que só funciona dentro da própria
 caixa, e o celular de quem você convidar não vai abrir nada.
 
@@ -182,7 +182,7 @@ caminho mais direto é um domínio apontando para ela:
 3. Rode o instalador informando o domínio:
 
    ```sh
-   TAINA_DOMAIN=nuvem.suacomunidade.org ./install.sh
+   taina setup --domain nuvem.suacomunidade.org
    ```
 
 O Caddy pega um certificado Let's Encrypt real automaticamente (desafio HTTP-01,
@@ -196,9 +196,9 @@ precisar abrir as portas 80/443. Atenção a uma pegadinha importante: a imagem
 oficial do Caddy (`caddy:2`) não inclui os módulos de provedor de DNS. Para
 DNS-01 você precisa de uma imagem do Caddy construída com o módulo do seu
 provedor de DNS (via `xcaddy` ou a imagem `caddy:builder`), além de um token de
-API do provedor. É um caminho avançado, documentado, opt-in: troque a imagem do
-serviço `caddy` no `docker-compose.yml` pela sua imagem custom e ajuste o
-`Caddyfile` com a diretiva `tls { dns <provedor> <token> }`.
+API do provedor. É um caminho avançado, documentado, opt-in: rode sua imagem custom do Caddy (com o módulo do seu provedor) na
+frente do `127.0.0.1:4000`, com a diretiva `tls { dns <provedor> <token> }` no
+`Caddyfile`.
 
 ## TLS na prática: o que combina com o que
 

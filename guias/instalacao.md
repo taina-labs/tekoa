@@ -19,7 +19,7 @@ remoto e disco de backup são para quando a comunidade for usar de verdade.
 
 1. [O que você vai precisar](#o-que-você-vai-precisar)
 2. [Passo 1: instalar o Docker](#passo-1-instalar-o-docker)
-3. [Passo 2: baixar o Oka](#passo-2-baixar-o-oka)
+3. [Passo 2: instalar a CLI](#passo-2-instalar-a-cli)
 4. [Passo 3: montar a imagem do Tainá](#passo-3-montar-a-imagem-do-tainá)
 5. [Passo 4: instalar](#passo-4-instalar)
 6. [Passo 5: criar a comunidade](#passo-5-criar-a-comunidade)
@@ -38,15 +38,8 @@ remoto e disco de backup são para quando a comunidade for usar de verdade.
 - Um terminal. No Raspberry Pi OS e no Linux ele já vem instalado. No Windows,
   instale o [Windows Terminal](https://aka.ms/terminal) ou use o
   PowerShell. No macOS, o aplicativo Terminal já existe.
-- Docker, com o plugin Compose. É o [Passo 1](#passo-1-instalar-o-docker).
-- `openssl`, que o `install.sh` usa para sortear o segredo da sessão. No Raspberry Pi OS
-  e no Linux ele costuma já estar instalado (`sudo apt-get install -y openssl`
-  no Debian e no Ubuntu, caso não esteja). No macOS vem com o sistema. No
-  Windows, instalar o [Git for Windows](https://git-scm.com/download/win) traz
-  o `openssl` junto.
-- `git`, só se você for montar a imagem do código-fonte
-  ([Passo 3](#passo-3-montar-a-imagem-do-tainá)). Quem usa a imagem pronta do
-  [Passo 4](#passo-4-instalar) não precisa dele.
+- Docker. É o [Passo 1](#passo-1-instalar-o-docker).
+- A CLI `taina`. É o [Passo 2](#passo-2-instalar-a-cli).
 - Storage de verdade: um pendrive, um disco externo ou uma partição do próprio
   disco que não seja do sistema.
 
@@ -55,16 +48,10 @@ Ele é lento e as fotos da família o matam. Se a sua caixa é um Raspberry Pi, 
 um SSD USB. Isso muda mais a experiência do Tainá do que qualquer configuração
 deixada de fora.
 
-Opcional, só se você quiser um endereço público com certificado de verdade: um
-domínio apontando para a sua caixa, com as portas 80 e 443 liberadas. Sem
-domínio, o Tainá funciona normalmente com um certificado local e o
-[Passo 7](#passo-7-acessar-de-fora-da-sua-rede) mostra como acessar de fora
-mesmo assim.
-
 ## Passo 1: instalar o Docker
 
-O Tainá roda como um conjunto de programas isolados dentro do Docker. Isso
-mantém o resto da sua máquina limpo e faz a atualização ser um comando só.
+O Tainá roda dentro do Docker. Isso mantém o resto da sua máquina limpo e faz a
+atualização ser um comando só.
 
 **No Raspberry Pi OS ou num Linux (Debian, Ubuntu)**, abra o terminal, cole este
 bloco inteiro e aperte Enter:
@@ -80,48 +67,47 @@ Confira se funcionou:
 
 ```sh
 docker --version
-docker compose version
 ```
 
-Duas linhas com número de versão, e está pronto.
-
-Se o comando `docker compose` der "não é um comando", o plugin do Compose não
-foi instalado. No Debian e no Ubuntu isso costuma ser um passo à parte:
-
-```sh
-sudo apt-get update && sudo apt-get install -y docker-compose-plugin
-```
+Uma linha com o número de versão, e está pronto.
 
 **No Windows e no macOS**, instale o Docker Desktop pelo site
 [docker.com](https://www.docker.com/products/docker-desktop/) e abra o
 aplicativo uma vez antes de continuar. No Windows, abra o Docker Desktop e
 confirme que ele está no modo Linux.
 
-## Passo 2: baixar o Oka
+## Passo 2: instalar a CLI
 
-O Oka é o repositório que coloca tudo no ar. Ele não contém o Tainá: ele
-organiza o banco de dados, a aplicação e o proxy que cuida do HTTPS.
+A CLI `taina` é o programa que opera a caixa: instala, atualiza, mostra os logs
+e faz o backup. Baixe o binário da
+[página de releases do Oka](https://github.com/taina-labs/oka/releases) para a
+arquitetura da sua caixa: `aarch64-linux` num Raspberry Pi, `x86_64-linux` num
+mini PC ou VPS. Depois:
+
+```sh
+sudo install -m755 taina-aarch64-linux /usr/local/bin/taina
+taina version
+```
+
+O último comando deve imprimir algo como `taina 0.1.0`. Se imprimir, está
+pronto.
+
+Quem usa Nix instala direto:
+
+```sh
+nix profile install github:taina-labs/oka
+```
+
+## Passo 3: montar a imagem do Tainá
+
+**Este passo só é necessário se você quiser partir do código-fonte**, ou se a
+imagem publicada ainda não existir. A forma normal de instalar é o
+[Passo 4](#passo-4-instalar), que baixa a imagem pronta do Tainá. Se o `setup`
+reclamar que a imagem não está disponível no registro, volte para cá e rode:
 
 ```sh
 git clone https://github.com/taina-labs/oka.git
 cd oka
-```
-
-Sem o `git` instalado? Baixe o ZIP da
-[página do Oka](https://github.com/taina-labs/oka) e descompacte. O resto do
-guia funciona igual, com uma exceção: se você precisar montar a imagem na sua
-própria caixa ([Passo 3](#passo-3-montar-a-imagem-do-tainá)), o `git` é
-necessário de verdade, porque o script baixa o código do Tainá de um
-repositório.
-
-## Passo 3: montar a imagem do Tainá
-
-**Este passo só é necessário se você quiser partir do código-fonte.** A forma
-normal de instalar é o [Passo 4](#passo-4-instalar), que baixa a imagem pronta
-do Tainá. Se o `install.sh` reclamar que a imagem não está disponível no
-registro, volte para cá e rode:
-
-```sh
 ./build-image.sh
 ```
 
@@ -130,64 +116,56 @@ compila a imagem na sua própria máquina. Na primeira vez leva vários minutos,
 porque baixa o compilador do Elixir e as dependências todas. Depois disso leva
 pouco.
 
-Ao terminar, ele escreve um arquivo `docker-compose.override.yml`. Não se
-preocupe com ele: o Docker Compose lê esse arquivo sozinho e passa a usar a
-imagem que você acabou de montar. Para voltar ao comportamento normal, apague
-esse arquivo.
+Ao terminar, ele diz como apontar a CLI para essa imagem:
 
-Se você montou a imagem local, as atualizações também passam a ser locais:
-rode `./build-image.sh` de novo e depois `./update.sh`. Está descrito em
-[Atualizar o Tainá](#atualizar-o-tainá).
+```sh
+TAINA_IMAGE=taina:local taina setup
+```
+
+Para publicar uma versão nova depois de mexer no código, rode o
+`./build-image.sh` de novo (ele reusa a pasta `taina-src`) e depois
+`taina update`.
 
 ## Passo 4: instalar
 
 ```sh
-./install.sh
+taina setup
 ```
 
 O que acontece, em ordem:
 
-1. O script confere se o Docker está presente.
-2. Ele cria um arquivo `.env` com um segredo sorteado, que assina as sessões.
-   Guarde esse arquivo com cuidado. Quem tem ele tem acesso à caixa.
-3. Ele baixa a imagem do Tainá e sobe os dois serviços: a aplicação (com o
-   banco da comunidade, um arquivo SQLite que o app mesmo cuida) e o proxy
-   reverso.
+1. Ele confere se o Docker está presente.
+2. Ele escreve um arquivo `taina.conf` com um segredo sorteado, que assina as
+   sessões. Guarde esse arquivo com cuidado. Quem tem ele tem acesso à caixa.
+3. Ele cria a rede e sobe o container do Tainá, com o banco da comunidade (um
+   arquivo SQLite que o app mesmo cuida).
 4. Ele espera o aplicativo responder que está saudável, o que prova que o app
-   subiu e que o banco está acessível. Isso leva cerca de um minuto na primeira
-   vez.
+   subiu. Isso leva cerca de um minuto na primeira vez.
 5. Ele imprime o endereço para o passo seguinte.
 
-Rode o script mais de uma vez sem problema: um `.env` que já existe nunca é
-sobrescrito, então seus segredos e seus dados continuam onde estão.
+Rode o comando mais de uma vez sem problema: um `taina.conf` que já existe
+nunca é sobrescrito, então seu segredo e seus dados continuam onde estão.
 
-Se aparecer `ERRO: imagem do Tainá indisponível`, volte ao
-[Passo 3](#passo-3-montar-a-imagem-do-tainá).
+### Expor ao mundo
 
-### Usando um domínio público
+A CLI **não configura o HTTPS**, e isso é uma decisão: quem expõe a caixa é
+você. Há dois caminhos.
 
-Se você tem um domínio apontando para a sua caixa e as portas 80 e 443
-abertas, rode com o domínio:
+- **Tailscale (recomendado).** `tailscale serve --bg 4000` publica a caixa com
+  HTTPS de verdade, sem abrir porta nenhuma. É o
+  [Passo 7](#passo-7-acessar-de-fora-da-sua-rede).
+- **Seu domínio com Let's Encrypt.** Precisa de um proxy na frente da caixa. O
+  Oka traz um `Caddyfile` de exemplo para montá-lo, e o
+  `taina setup --domain nuvem.suacomunidade.org` escreve o endereço certo nas
+  URLs que o Tainá monta (convites, links).
 
-```sh
-TAINA_DOMAIN=nuvem.suacomunidade.org ./install.sh
-```
-
-Isso faz o Caddy pedir um certificado real e gratuito (Let's Encrypt) e
-redirecionar HTTP para HTTPS automaticamente.
-
-Sem domínio, o Caddy usa um certificado local. Funciona, mas o navegador vai
-avisar que a conexão não é segura na primeira vez, em cada dispositivo. Isso é
-esperado. Para não ter aviso nenhum sem gastar com domínio, veja o
-[Passo 7](#passo-7-acessar-de-fora-da-sua-rede).
-
-O `.env` guarda o domínio. Para mudar depois, edite a linha `TAINA_DOMAIN=` no
-arquivo `.env` e rode `./update.sh`.
+O `taina.conf` guarda o domínio. Para mudar depois, edite a linha
+`TAINA_DOMAIN=` no arquivo e rode `taina update`.
 
 ## Passo 5: criar a comunidade
 
-Abra no navegador o endereço que o `install.sh` imprimiu no final. Ele termina
-em `/setup`. É algo como `https://nuvem.suacomunidade.org/setup`.
+Abra no navegador o endereço que o `setup` imprimiu no final. Ele termina em
+`/setup`. É algo como `https://nuvem.suacomunidade.org/setup`.
 
 Vão aparecer três telas, em sequência:
 
@@ -243,10 +221,15 @@ nenhuma na internet e sem certificado falso. Leva uns dez minutos:
 1. Instale o Tailscale na caixa e no celular ou no computador de quem vai
    acessar.
 2. Entre na mesma conta nos dois.
-3. Instale no celular de cada morador(a) e faça login com a mesma conta.
+3. Na caixa, publique o Tainá no Tailscale:
+
+   ```sh
+   tailscale serve --bg 4000
+   ```
 
 Pronto. Cada pessoa passa a acessar o Tainá pelo endereço Tailscale, com HTTPS
-de verdade, sem aviso do navegador.
+de verdade, sem aviso do navegador. Escreva esse endereço no `TAINA_DOMAIN` do
+`taina.conf` e rode `taina update`, para que os convites saiam com ele.
 
 ## Passo 8: ligar o backup
 
@@ -256,8 +239,7 @@ precisa de uma cópia em outro lugar, não só no mesmo disco.
 O [runbook de backup e restauração](runbook-backup-restore.md) tem o
 procedimento inteiro, incluindo como restaurar e como ensaiar. O resumo:
 
-1. **Monte um disco externo** na caixa. O ponto de montagem precisa existir
-   quando o Docker sobe. Por exemplo, um disco em `/mnt/backup`.
+1. **Monte um disco externo** na caixa. Por exemplo, um disco em `/mnt/backup`.
 2. **Dê o disco ao Tainá.** O container roda como um usuário sem privilégios
    (`nobody`, uid 65534), então a pasta precisa pertencer a ele, senão o
    backup falha na hora de escrever:
@@ -266,35 +248,39 @@ procedimento inteiro, incluindo como restaurar e como ensaiar. O resumo:
    sudo chown 65534:65534 /mnt/backup
    ```
 
-3. **Aponte o backup para ele.** No `.env`, descomente a linha do caminho de
-   backup e coloque o seu disco:
+3. **Aponte o backup para ele.** No `taina.conf`, descomente (ou escreva) a
+   linha do caminho de backup:
 
    ```
    TAINA_BACKUP_DIR=/mnt/backup
    ```
 
-   Sem essa linha, o backup mora num volume nomeado (`backups_data`) dentro do
-   Docker: fica no mesmo disco do sistema, e some com o aparelho. Um caminho
-   de disco é o seu disco, e você pode trocar, levar embora ou guardar em
-   outro cômodo. O mesmo vale para os arquivos de verdade: o
-   `TAINA_STORAGE_DIR` aponta a pasta de uploads para outro lugar (veja
+   Sem essa linha, o backup mora num volume nomeado (`taina_backups`) dentro do
+   Docker: fica no mesmo disco do sistema, e some com o aparelho. Um caminho de
+   disco é o seu disco, e você pode trocar, levar embora ou guardar em outro
+   cômodo. O mesmo vale para os arquivos de verdade: o `TAINA_STORAGE_DIR`
+   aponta a pasta de uploads para outro lugar (veja
    ["Onde ficam meus arquivos"](#onde-ficam-meus-arquivos) mais abaixo).
-4. **Ligue o backup.** No `.env`, mude a linha:
+4. **Ligue o backup.** No `taina.conf`, mude a linha:
 
    ```
-   BACKUP_ENABLED=true
+   TAINA_BACKUP_ENABLED=true
    ```
 
-5. **Suba de novo:**
+5. **Aplique:**
 
    ```sh
-   ./update.sh
+   taina update
    ```
 
    A partir daí um backup é feito todo dia às 04:00 UTC.
 
 6. **Gere um agora e ensaie restaurar.** Um backup que nunca foi testado não é
-   backup. O runbook tem o passo a passo do ensaio.
+   backup. O runbook tem o passo a passo do ensaio:
+
+   ```sh
+   taina backup --out /mnt/backup
+   ```
 
 Sobre a pasta de backup: uma cópia que mora no mesmo aparelho que ela protege
 desaparece junto se o aparelho for roubado, queimar ou o disco falhar. Tenha
@@ -304,18 +290,17 @@ mais do que uma pasta no mesmo disco.
 ## Atualizar o Tainá
 
 ```sh
-./update.sh
+taina update
 ```
 
-Ele baixa a versão nova, reinicia e confere a saúde. As migrações de banco
-rodam sozinhas no boot, então atualizar é seguro e você não precisa rodar
+Ele baixa a versão nova, recria o container e confere a saúde. As migrações de
+banco rodam sozinhas no boot, então atualizar é seguro e você não precisa rodar
 nenhum comando no banco.
 
-Antes de mexer em qualquer coisa, o `update.sh` faz um backup do banco de
-dados por conta própria e guarda na pasta `rollback/`, dentro da pasta do
-Oka. Se o Tainá não voltar a ficar saudável, ele não te deixa no escuro:
-imprime os comandos exatos para voltar para a versão anterior, inclusive como
-devolver esse backup.
+Antes de mexer em qualquer coisa, o `update` guarda uma cópia do banco na pasta
+`rollback/`, ao lado de onde você rodou o comando. Se o Tainá não voltar a ficar
+saudável, ele não te deixa no escuro: imprime os comandos exatos para voltar
+para a versão anterior, inclusive como devolver esse banco.
 
 Fique claro o que essa rede de proteção cobre: ela é só do banco de dados, é
 feita na hora e mora na própria caixa. Ela existe para o dia em que uma
@@ -324,59 +309,50 @@ atualização sai errada, e não substitui o backup de verdade do
 fora da caixa. Os arquivos de storage não são mexidos pela atualização: ficam
 no volume ou no disco deles, intocados.
 
-Se você montou a imagem local no [Passo 3](#passo-3-montar-a-imagem-do-tainá),
-a atualização é local. Rode `./build-image.sh` antes, ou rode `./update.sh` e
-ele já reconstrói para você.
-
-Se algo der errado depois de atualizar, o `update.sh` diz como voltar para a
+Se algo der errado depois de atualizar, o `update` diz como voltar para a
 versão anterior.
 
 ## Quando algo dá errado
 
-### `ERRO: imagem do Tainá indisponível`
+### O `setup` diz que a imagem não está disponível
 
-O `install.sh` não conseguiu baixar a imagem e ela não está na sua máquina.
-Rode o [Passo 3](#passo-3-montar-a-imagem-do-tainá) e depois o
+Ele não conseguiu baixar a imagem do Tainá. Rode o
+[Passo 3](#passo-3-montar-a-imagem-do-tainá) e depois o
 [Passo 4](#passo-4-instalar) de novo.
 
 ### O navegador avisa que a conexão não é segura
 
-Esperado numa caixa sem domínio: o certificado é local, e o navegador não
-confia nele. As páginas funcionam normalmente, com o aviso. Para um HTTPS sem
-aviso, use Tailscale ([Passo 7](#passo-7-acessar-de-fora-da-sua-rede)) ou um
-domínio no [Passo 4](#usando-um-domínio-público).
+Esperado numa caixa sem domínio próprio: você está com um certificado local (ou
+acessando por IP). As páginas funcionam normalmente, com o aviso. Para um HTTPS
+sem aviso, use Tailscale ([Passo 7](#passo-7-acessar-de-fora-da-sua-rede)) ou
+um domínio com proxy na frente.
 
 ### O app não ficou saudável a tempo
 
 Veja os logs:
 
 ```sh
-docker compose logs -f app
+taina logs -f
 ```
 
 A causa mais comum é a primeira migração do banco ainda rodando. Espere um
-minuto e rode `./update.sh`, que só reinicia e reconfere a saúde. Se o erro se
-repetir, copie a saída dos logs e abra uma issue.
+minuto e rode `taina health`. Se o erro se repetir, copie a saída dos logs e
+abra uma issue.
 
-### A caixa rodou o compose antigo (com PostgreSQL)
+### A caixa rodou o Oka antigo (com `docker compose`)
 
-O Tainá agora guarda tudo num arquivo SQLite; não há mais serviço de banco de
-dados. Uma caixa que rodou o compose anterior tem os dados num volume
-`postgres_data`, que a versão nova não lê. Sendo alpha, não há dado real a
-perder, então recomece:
+O Tainá passou a ser operado pela CLI, e o banco é um arquivo SQLite; não há
+mais `docker-compose.yml` nem serviço de banco de dados. Sendo alpha, não há
+dado real a perder, então recomece do zero:
 
 ```sh
-docker compose down -v
-./install.sh
+docker rm -f taina-app
+docker volume rm taina_db taina_storage taina_backups
+taina setup
 ```
 
-Atenção: o `down -v` apaga os volumes da caixa, incluindo o do storage. Se
-há arquivos ali que você queira guardar, copie para fora antes de rodar.
-
-### `docker compose` diz que o comando não existe
-
-O plugin do Compose não está instalado. Veja a seção de instalação do
-[Passo 1](#passo-1-instalar-o-docker).
+Atenção: isso apaga os dados da caixa, incluindo o storage. Se há arquivos ali
+que você queira guardar, copie para fora antes.
 
 ### O convite não abre no celular do morador
 
@@ -384,16 +360,10 @@ O convite é um endereço da sua rede local, e o celular dele está fora. Resolv
 o acesso remoto primeiro ([Passo 7](#passo-7-acessar-de-fora-da-sua-rede)) e
 convide de novo, agora com o endereço que o guia der.
 
-### O `TAINA_DOMAIN` mudou e o Caddy não pegou o certificado novo
-
-Rode `./update.sh` e acompanhe `docker compose logs -f caddy`. O Caddy só
-consegue pedir certificado se as portas 80 e 443 estiverem abertas e o domínio
-apontar para a caixa.
-
 ### Onde ficam meus arquivos
 
-Por padrão, num volume nomeado (`storage_data`) dentro do Docker. Para vê-los
-de fora, aponte uma pasta da sua máquina no `.env`, do mesmo jeito que o
+Por padrão, num volume nomeado (`taina_storage`) dentro do Docker. Para vê-los
+de fora, aponte uma pasta da sua máquina no `taina.conf`, do mesmo jeito que o
 [Passo 8](#passo-8-ligar-o-backup) faz com os backups:
 
 ```
@@ -408,9 +378,9 @@ sudo mkdir -p /mnt/storage
 sudo chown 65534:65534 /mnt/storage
 ```
 
-Depois rode `./update.sh` para o app subir usando o caminho novo.
+Depois rode `taina update` para o app subir usando o caminho novo.
 
-O banco da comunidade é um arquivo (`taina.db`) num volume nomeado (`db_data`),
+O banco da comunidade é um arquivo (`taina.db`) num volume nomeado (`taina_db`),
 do mesmo jeito. Ele é pequeno e o backup do [Passo 8](#passo-8-ligar-o-backup)
 já o inclui, então não precisa mexer nele à mão: o `TAINA_DB_DIR` existe só
 para quem quiser guardá-lo num disco próprio.
@@ -423,7 +393,7 @@ comum, que é o jeito recomendado de olhar.
 | Passo | Primeira vez | Da próxima vez |
 | --- | --- | --- |
 | 1. Docker | 5 min | 0 |
-| 2. Baixar o Oka | 1 min | 0 |
+| 2. Instalar a CLI | 1 min | 0 |
 | 3. Montar a imagem (só se necessário) | 10 a 20 min | 1 a 3 min |
 | 4. Instalar | 2 a 5 min | 0 |
 | 5. Criar a comunidade | 2 min | 0 |

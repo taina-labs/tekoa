@@ -189,7 +189,7 @@ disco do sistema, que é exatamente o que a gente quer evitar.
    sudo chown 65534:65534 /mnt/taina
    ```
 
-3. **Aponte o Tainá para o disco.** No `.env` da pasta do Oka, coloque os dois
+3. **Aponte o Tainá para o disco.** No `taina.conf` da pasta do Oka, coloque os dois
    caminhos (os arquivos de upload e os backups podem ser pastas irmãs no
    mesmo disco):
 
@@ -201,7 +201,7 @@ disco do sistema, que é exatamente o que a gente quer evitar.
 4. **Suba com o disco novo:**
 
    ```sh
-   ./update.sh
+   taina update
    ```
 
 O [Passo 8 do guia de instalação](instalacao.md#passo-8-ligar-o-backup)

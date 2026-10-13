@@ -70,7 +70,7 @@ Legenda: `[x]` mergesado e verificado no código, `[~]` parcial, `[ ]` pendente.
 - [x] **Ligar o RLS de verdade:** `prepare_query/3` que levanta exceção sem
       contexto de tekoa; `FORCE ROW LEVEL SECURITY`; teste de isolamento
       cross-tekoa com role não-superuser.
-- [x] Rota `/health` (healthcheck do compose aponta para ela).
+- [x] Rota `/health` (healthcheck do container aponta para ela).
 - [x] `Ecto.Migrator` no boot do release.
 - [x] Migração de enforcement single-tekoa (índice único).
 - [x] README do repo `taina` sem menção a XRPC; docs alinhadas à RFC 002.
@@ -88,9 +88,10 @@ exigia e do que só ficou visível quando alguém tentou rodar de verdade.
 
 - [x] Dockerfile de produção (Elixir 1.20 / OTP 28, multi-arch).
 - [x] Migrações automáticas no boot do release (`Taina.Release.migrate`).
-- [x] `install.sh`: gera segredos, escreve `.env`, sobe compose, imprime a URL
-      do assistente de setup. Idempotente (nunca sobrescreve um `.env`).
-- [x] `update.sh`: baixa a imagem, reinicia, confere a saúde, e diz como
+- [x] `taina setup`: gera o segredo, escreve `taina.conf`, sobe o container,
+      imprime a URL
+      do assistente de setup. Idempotente (nunca sobrescreve um `taina.conf`).
+- [x] `taina update`: baixa a imagem, reinicia, confere a saúde, e diz como
       voltar atrás se der errado.
 - [x] Proxy reverso com HTTPS automático (Caddy; Let's Encrypt com
       `TAINA_DOMAIN`, certificado local sem ele).
@@ -110,10 +111,10 @@ exigia e do que só ficou visível quando alguém tentou rodar de verdade.
       há imagem publicada (antes do primeiro release, ou num fork).
 - [ ] **Publicar a primeira imagem.** O job de docker existe e roda em release,
       mas **nenhuma release foi criada ainda** e o `ghcr.io/taina-labs/taina`
-      está vazio. Sem isso o `install.sh` não tem o que baixar.
-- [ ] **Vistoriar o `install.sh` numa máquina real**, do zero, cronometrado.
+      está vazio. Sem isso o `taina setup` não tem o que baixar.
+- [ ] **Vistoriar o `taina setup` numa máquina real**, do zero, cronometrado.
 - [ ] **Ensaio de restore com pessoa não-técnica** (o gate do runbook).
-- [ ] **Ensaio do `update.sh`**: subir, atualizar, conferir, e voltar atrás.
+- [ ] **Ensaio do `taina update`**: subir, atualizar, conferir, e voltar atrás.
 
 **Gate:** uma pessoa não-técnica instala em menos de 30 minutos seguindo só o
 `guias/instalacao.md`, num drill de restore, e numa atualização.
@@ -135,12 +136,12 @@ exigia e do que só ficou visível quando alguém tentou rodar de verdade.
 - [x] `request_access` generalizado para qualquer morador(a) + `list_my_requests`
       (RFC 003 D4).
 
-**Gate:** instância nova, do `docker compose up` ao segundo morador logado, sem
+**Gate:** instância nova, do `taina setup` ao segundo morador logado, sem
 sem tocar em terminal depois do install. Cobertura de testes nos fluxos de auth.
 
 > **Status (2026-10-05): gate fechado no código, ainda não validado numa
 > máquina real.** Todos os itens implementados e testados (221 testes), mas o
-> gate fala em "do `docker compose up` ao segundo morador logado, sem tocar em
+> gate fala em "do `taina setup` ao segundo morador logado, sem tocar em
 > terminal", e isso só se prova no [ensaio](#o-que-falta-para-o-010).
 
 ### Fase 2, Ybira: arquivos (8 semanas)
@@ -185,7 +186,7 @@ a v3.0 também não tinha listado.
       moradores, versão, em pt-BR comum. Sem cor de alerta, sem gráficos.
 - [x] **Verificação de update no painel:** opt-in, desligada por padrão, e
       **nunca** envia dado da tekoa para lugar nenhum.
-- [ ] **Vistoriar o `install.sh` numa máquina real**, do zero, cronometrado.
+- [ ] **Vistoriar o `taina setup` numa máquina real**, do zero, cronometrado.
 - [ ] **2-3 comunidades piloto** instalando sozinhas, com observação.
 
 **Gate (= MVP lançado):** piloto não-técnico instala em <30min só com o guia;
@@ -204,15 +205,8 @@ nada de codar novo: é **publicar e provar**.
 
 ### Bloqueadores (sem isso não existe release)
 
-1. **Publicar a primeira imagem.** O job de docker em
-   `.github/workflows/release-please.yml` só roda quando o release-please cria
-   uma release, e nenhuma foi criada. Isso quer dizer que `install.sh` falha na
-   linha do `docker compose pull` para qualquer pessoa que siga o guia. Publicar
-   uma tag de verdade conserta.
-2. **Conferir a visibilidade do pacote no ghcr.** O primeiro push de um pacote
-   novo no registry do GitHub nasce privado. Se ele ficar privado, o
-   `docker compose pull` falha com `denied` mesmo com a release publicada. Tem
-   que ser público para o guia funcionar.
+Nenhum. A `0.1.0` foi cortada: a imagem está publicada no
+`ghcr.io/taina-labs/taina` e o pacote é público.
 
 > O smoke test da imagem (`.github/workflows/docker-smoke.yml` no repo `taina`)
 > roda em toda tag `v*` e sobe o container de verdade: migrações no boot,
@@ -226,7 +220,7 @@ nada de codar novo: é **publicar e provar**.
    `guias/instalacao.md`, sem ajuda técnica externa. Anotar onde travar.
 5. **Drill de backup/restore** com 100% de sucesso, feito por alguém não
    técnico. É o item mais fácil de pular e o mais caro de pular.
-6. **Ensaio do `update.sh`**: subir, atualizar, conferir a saúde, e voltar para
+6. **Ensaio do `taina update`**: subir, atualizar, conferir a saúde, e voltar para
    a versão anterior. Ninguém testou esse caminho ainda.
 7. **Benchmark no Pi 5** (gates das Fases 2 e 3): foto de 4MB + thumbnail < 3s,
    1080p sem stutter, 10k arquivos fluidos, galeria com 5k fotos.
