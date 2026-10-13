@@ -3,6 +3,7 @@
 **Status:** Proposta
 **Data:** 2026-06-09
 **Substitui:** `ROADMAP.md` (integralmente) e as seções de entrega/cliente da `RFC_ARQUITETURA.md` (RFC 001)
+**Emenda:** `RFC_006_KERNEL.md` extrai o núcleo para a biblioteca Ypy, troca Postgres por SQLite no box, rebaixa o RLS e transforma "Tainá Hospedada" em frota de caixas por Tekoa.
 **Autoria:** @zoedsoupe + revisão técnica
 
 ---
@@ -98,6 +99,15 @@ seção 5, Fase 0). Razões para manter mesmo com tenant único:
    múltiplas comunidades em infra compartilhada, isolamento garantido pelo
    banco.
 
+> **Emenda (RFC_006):** o RLS **não** permanece ligado no box. Com uma Tekoa por
+> caixa, leitura cruzada entre tekoas não existe por construção, e o RLS nunca
+> defendeu casa/praça nem dono (as policies eram só `tekoa_id`-scoped). O RLS
+> fica **estacionado** (tag no git mais uma página de doc), não apagado. A trava
+> de uma-Tekoa-por-box vira política do box, não invariante do kernel; o
+> enforcement do escopo passa a ser a função de leitura, testada uma vez
+> (RFC_003 D2). A hospedagem gerenciada deixa de justificar RLS: é uma frota de
+> caixas por Tekoa, não um Postgres compartilhado.
+
 ### D3, Padrão Scope (Phoenix 1.8) + RLS automático no Repo
 
 Todo context recebe um `Taina.Scope` como primeiro argumento e o Repo injeta o
@@ -137,6 +147,13 @@ SQLite + Litestream seria operacionalmente mais simples para uma caixa única
 (modelo PocketBase). Mas: o RLS não existe no SQLite, o investimento em
 policies já foi feito, e o caminho de hospedagem gerenciada exige Postgres.
 Decisão: Postgres 16, tunado para Pi (shared_buffers baixo, ver compose).
+
+> **Emenda (RFC_006):** invertido. O box roda **SQLite** (WAL). As três razões
+> acima caíram: o RLS não existe no SQLite, mas também não faz falta no box
+> (D2); as policies foram estacionadas, não mantidas; e a hospedagem gerenciada
+> é frota de caixas por Tekoa, não Postgres. O peso que doía não era a RAM do
+> Postgres, era a **operação** (deploy, migrações, CI). Oban roda no SQLite via
+> `Oban.Engines.Lite`.
 
 ### D6, Convites por link, e-mail opcional
 
@@ -187,6 +204,12 @@ Ordem de implementação de receita (todas mantêm o core AGPL):
 3. **Depois, "Tainá Hospedada" (modelo Penpot):** instância gerenciada
    multi-tenant para comunidades sem hardware. É aqui que o RLS multi-tekoa
    paga o investimento.
+
+> **Emenda (RFC_006):** "Tainá Hospedada" deixa de ser multi-tenant
+> compartilhado. É uma **frota de caixas por Tekoa** (cada uma o mesmo box
+> SQLite), atrás de um control plane proprietário que consome artefatos
+> publicados (imagem, verbos, `/health`) e não importa código do Tainá. O RLS
+> não paga investimento nenhum; a isolação é o container e o volume.
 4. **Oportunista:** kits de hardware pré-gravados (Pi 5 + SD + case) vendidos
    no Brasil.
 
@@ -198,8 +221,8 @@ Ordem de implementação de receita (todas mantêm o core AGPL):
 | --------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime         | Elixir 1.20 / OTP 28, nó único                | `mix release`, migrações no boot                                                                                                                        |
 | Web             | Phoenix 1.8 + LiveView                        | UI adiada: implementação é **backend-first**; deps de frontend (`phoenix_live_view`, `tailwind`, `esbuild`, etc.) só entram quando a fase de UI começar |
-| Banco           | PostgreSQL 18 + RLS                           | schemas `maraca`/`ybira`/`guara`                                                                                                                        |
-| Jobs            | Oban                                          | Postgres-backed                                                                                                                                         |
+| Banco           | SQLite + WAL (RFC_006)                        | schemas `maraca`/`ybira`/`guara`                                                                                                                        |
+| Jobs            | Oban                                          | Oban Lite sobre SQLite (RFC_006)                                                                                                                                        |
 | Mídia           | `image` (libvips/vix)                         | thumbnails, EXIF básico                                                                                                                                 |
 | Upload          | LiveView uploads (chunked, progresso)         | TUS/resumable fica para API pós-MVP                                                                                                                     |
 | Download        | `Plug.Conn.send_file/5` com suporte a `Range` | streaming de vídeo básico via offset/length                                                                                                             |

@@ -43,9 +43,13 @@ escrever nada, só ligar e apontar para um destino seguro.
 - **Agendado:** um job do Oban roda todo dia às 04:00 UTC e chama
   `Taina.Nhaman.Backup.run/1`. Ele só funciona se o backup estiver habilitado.
 - **Habilitar:** no `.env`, defina `BACKUP_ENABLED=true`. O destino do arquivo é
-  o `BACKUP_DIR` (por padrão `/app/backups` dentro do container, mapeado para um
-  volume). Em produção, monte ali um disco USB ou um caminho sincronizado por
-  rclone, para o backup não morrer junto com a caixa.
+  o `BACKUP_DIR` (`/app/backups` dentro do container). No host, esse caminho é
+  o que você definir no `TAINA_BACKUP_DIR` do `.env`; sem ele, os backups caem
+  num volume nomeado do Docker, que fica no mesmo disco da caixa. Para o
+  backup não morrer junto com a caixa, aponte o `TAINA_BACKUP_DIR` para um
+  disco USB ou um caminho sincronizado por rclone (o
+  [Passo 8 do guia de instalação](instalacao.md#passo-8-ligar-o-backup)
+  mostra o passo a passo, incluindo o `chown` que o disco precisa).
 - **Sob demanda:** dentro do release você pode chamar `Taina.Nhaman.Backup.run/0`
   para gerar um backup na hora (por exemplo, antes de uma atualização grande).
 
@@ -78,62 +82,107 @@ errado e você precisa voltar para o último backup bom.
    antes de seguir, em vez de adivinhar.
 
 2. **Coloque o arquivo onde o Tainá enxerga.** Copie o `.tar.gz` para o diretório
-   de backups montado no container (o `BACKUP_DIR`, por padrão o volume mapeado
-   em `/app/backups`).
+   de backups montado no container (o `BACKUP_DIR`, por padrão `/app/backups`;
+   no host, é o caminho do seu `TAINA_BACKUP_DIR`).
 
-3. **Pare a aplicação, mantenha o banco no ar.** Você quer ninguém escrevendo no
-   banco durante a restauração, mas o Postgres precisa estar de pé para receber
-   os dados:
+3. **Tire o mundo de fora, sem derrubar o app.** Durante a restauração você não
+   quer ninguém escrevendo no banco. O comando de restauração roda dentro do
+   container do app, então o app precisa continuar no ar: não rode `docker
+   compose stop app`. A porta de entrada da caixa é o proxy. Pare só ele, que
+   o app e o banco seguem de pé:
 
    ```sh
-   docker compose stop app
-   # confira que o banco continua rodando:
-   docker compose ps db
+   docker compose stop caddy
+   # o app e o banco precisam continuar de pé:
+   docker compose ps
+   ```
+
+   Exceção: se você acessa a caixa pela Forma A do
+   [guia de acesso remoto](acesso-remoto.md#https-sem-dor-certificado-de-verdade-sem-domínio-próprio)
+   (o `tailscale serve --bg 4000`), o Tailscale serve o app direto, sem
+   passar pelo Caddy. Desligue o serve também antes de seguir:
+
+   ```sh
+   tailscale serve off
    ```
 
 4. **Tire um backup de segurança do estado atual** (recomendado), caso precise
-   voltar atrás da própria restauração.
+   voltar atrás da própria restauração:
+
+   ```sh
+   docker compose exec app /app/bin/taina eval 'Taina.Nhaman.Backup.run()'
+   ```
+
+   O novo `.tar.gz` aparece no diretório de backups.
 
 5. **Restaure.** Há dois caminhos. O recomendado usa a própria função do Tainá,
-   que cuida do banco e do storage de uma vez. Suba um shell do release:
+   que cuida do banco e do storage de uma vez, e roda dentro do container do
+   app:
 
    ```sh
-   docker compose run --rm app /app/bin/taina remote
+   docker compose exec app /app/bin/taina eval 'Taina.Nhaman.Backup.restore("/app/backups/taina-backup-AAAAMMDDTHHMMSSZ.tar.gz")'
    ```
 
-   E no prompt do Elixir:
+   O `eval` roda a chamada e imprime o resultado. Se você vir exatamente
+   `{:ok, :restored}`, a restauração deu certo. Qualquer outra resposta (uma
+   mensagem de erro, um `{:error, ...}`) significa que falhou: não siga para o
+   próximo passo, leia o erro e resolva a causa (ou peça ajuda) antes de
+   continuar.
 
-   ```elixir
-   Taina.Nhaman.Backup.restore("/app/backups/taina-backup-AAAAMMDDTHHMMSSZ.tar.gz")
-   ```
+   Uma nota sobre por que `eval` e não o `remote` do release: o `remote` serve
+   para se conectar a um node do Tainá que já esteja no ar. Num container
+   avulso, ou com o app parado, não existe node nenhum para conectar e o
+   comando falha. O `eval` roda a chamada na hora, sem depender disso.
 
-   Essa função extrai o arquivo, roda o `pg_restore --clean --if-exists` no banco
-   e recoloca a árvore de `storage/`. Se você vir exatamente `{:ok, :restored}`,
-   a restauração deu certo. Qualquer outra resposta (uma mensagem de erro, um
-   `{:error, ...}`) significa que falhou: não siga para o próximo passo, leia o
-   erro e resolva a causa (ou peça ajuda) antes de continuar.
+   Enquanto o restore roda, o app pode reclamar nos logs: as tabelas estão
+   sendo trocadas embaixo dele. É esperado, e ele se recompõe quando o
+   restore termina. Essa função extrai o arquivo, roda o `pg_restore --clean
+   --if-exists` no banco e recoloca a árvore de `storage/`. O dono das
+   tabelas volta do jeito que está gravado no dump, que é o mesmo de antes
+   do desastre.
 
-   Caminho manual (só o banco), caso precise restaurar apenas o Postgres a partir
-   do `db.dump`. Primeiro extraia só o `db.dump` de dentro do arquivo de backup:
+   Caminho manual (só o banco), caso precise restaurar apenas o Postgres a
+   partir do `db.dump`. Primeiro extraia só o `db.dump` de dentro do arquivo
+   de backup. Faça de dentro do container, para funcionar tanto com volume
+   nomeado quanto com disco montado (o container traz o `tar` e o cliente do
+   PostgreSQL):
 
    ```sh
-   tar -xzf taina-backup-AAAAMMDDTHHMMSSZ.tar.gz db.dump
+   docker compose exec app sh -c 'cd /app/backups && tar -xzf taina-backup-AAAAMMDDTHHMMSSZ.tar.gz db.dump'
    ```
 
-   Depois rode o restore a partir do `db.dump` extraído:
+   Depois rode o restore a partir do `db.dump` extraído. Note a conexão: o
+   restore manual precisa do usuário administrador do banco (o
+   `BACKUP_DATABASE_URL`, que já existe dentro do container), e não do
+   `DATABASE_URL` que o app usa. A variável existe dentro do container, e
+   não na sua shell de host, então deixe o `sh -c` expandi-la lá dentro (o
+   mesmo jeito do passo de extração acima):
 
    ```sh
-   pg_restore --clean --if-exists --no-owner --no-privileges \
-     --dbname "$DATABASE_URL" db.dump
+   docker compose exec app sh -c 'pg_restore --clean --if-exists --no-privileges --dbname "$BACKUP_DATABASE_URL" /app/backups/db.dump'
    ```
+
+   Um detalhe: não acrescente `--no-owner` a esse comando. O dump gravado
+   pelo backup guarda o dono dos objetos, e é ele que repõe a propriedade.
+   Com `--no-owner`, tudo nasce dono do usuário da conexão de backup, o
+   `taina_app` deixa de ser dono do próprio banco, e o sintoma é estranho: o
+   app sobe, mas nada aparece, porque ele não é dono das tabelas que
+   precisa ler.
 
 6. **Verifique antes de reabrir.** Confira que os dados voltaram (ver a seção de
    verificação abaixo).
 
-7. **Suba a aplicação de novo.**
+7. **Devolva o acesso.** O app nunca chegou a parar; o que estava parado era o
+   proxy:
 
    ```sh
-   docker compose start app
+   docker compose start caddy
+   ```
+
+   Se você desligou o `tailscale serve` no passo 3, religue:
+
+   ```sh
+   tailscale serve --bg 4000
    ```
 
    As migrações de banco rodam sozinhas no boot do release, então um backup um
@@ -153,9 +202,12 @@ você não precisa torcer para o backup funcionar: ele é exercitado de verdade.
   marcador único no banco e no storage, faz um backup, **destrói** os dados, faz
   o restore, e confirma que o marcador voltou idêntico nos dois lugares. Se o
   ciclo de backup/restore quebrar, o CI fica vermelho.
-- **Na sua caixa (opcional):** você pode rodar a mesma verificação contra um
-  banco descartável para ganhar confiança no seu ambiente. Ela é destrutiva,
-  então nunca rode contra o banco de produção:
+- **Na sua máquina de desenvolvimento (opcional):** você pode rodar a mesma
+  verificação contra um banco descartável para ganhar confiança no seu
+  ambiente. Uma atenção: essa tarefa é do Mix, então precisa de uma máquina
+  com o código-fonte do Tainá e o Elixir instalados. Ela não roda dentro do
+  container do release, que não traz o Mix. Ela é destrutiva, então nunca
+  rode contra o banco de produção:
 
   ```sh
   MIX_ENV=dev mix taina.backup.verify
@@ -169,7 +221,8 @@ a fazer).
 
 - [ ] A pessoa consegue localizar o arquivo de backup mais recente sozinha.
 - [ ] A pessoa copia o arquivo para o diretório de backups do Tainá.
-- [ ] A pessoa para o app mantendo o banco no ar (`docker compose stop app`).
+- [ ] A pessoa bloqueia o acesso de fora sem derrubar o app
+      (`docker compose stop caddy`).
 - [ ] A pessoa entende o aviso de que a restauração é destrutiva.
 - [ ] A pessoa executa o restore e vê o `{:ok, :restored}`.
 - [ ] A pessoa sobe o app de novo e confirma `/health` ok.

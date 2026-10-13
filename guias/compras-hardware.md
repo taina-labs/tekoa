@@ -2,14 +2,20 @@
 
 > Documento escrito em 31/08/2025, tentativa de atualização constante.
 
+**Atenção com os preços:** este guia é antigo e os valores abaixo são
+indicativos, provavelmente desatualizados. Use as tabelas para ter a ordem de
+grandeza e o formato de cada setup, e confirme preços e disponibilidade nos
+links antes de comprar.
+
 ## Índice
 
 1. [Fase 1: Setup Básico (MVP)](#fase-1-setup-básico-mvp)
 2. [Fase 2: Setup Intermediário](#fase-2-setup-intermediário)
 3. [Fase 3: Setup Profissional](#fase-3-setup-profissional)
 4. [Guias de Montagem](#guias-de-montagem)
-5. [Dicas de Economia](#dicas-de-economia)
-6. [Calculadora de Custos](#calculadora-de-custos)
+5. [Montar o Disco e Apontar o Tainá](#montar-o-disco-e-apontar-o-tainá)
+6. [Dicas de Economia](#dicas-de-economia)
+7. [Calculadora de Custos](#calculadora-de-custos)
 
 ---
 
@@ -153,6 +159,57 @@
 
 ---
 
+## Montar o Disco e Apontar o Tainá
+
+Comprado o hardware, o disco extra (SSD, HD ou pendrive) precisa ser montado
+na caixa e apresentado ao Tainá. Sem isso, arquivos e backups ficam no mesmo
+disco do sistema, que é exatamente o que a gente quer evitar.
+
+1. **Formate e monte o disco** num ponto fixo. No Raspberry Pi OS e no Debian
+   ou Ubuntu, confira o nome do disco com `lsblk`; o exemplo assume
+   `/dev/sda1`. Atenção: formatar apaga tudo que estiver no disco.
+
+   ```sh
+   sudo mkfs.ext4 /dev/sda1
+   sudo mkdir -p /mnt/taina
+   sudo mount /dev/sda1 /mnt/taina
+   ```
+
+   Para o disco montar sozinho a cada boot, guarde ele na `/etc/fstab` pelo
+   UUID, com o `nofail` para a caixa subir mesmo sem o disco:
+
+   ```sh
+   echo "UUID=$(lsblk -no UUID /dev/sda1) /mnt/taina ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
+   ```
+
+2. **Dê o disco ao usuário do container.** O Tainá roda como `nobody`
+   (uid 65534), e é ele quem precisa poder escrever:
+
+   ```sh
+   sudo chown 65534:65534 /mnt/taina
+   ```
+
+3. **Aponte o Tainá para o disco.** No `.env` da pasta do Oka, coloque os dois
+   caminhos (os arquivos de upload e os backups podem ser pastas irmãs no
+   mesmo disco):
+
+   ```
+   TAINA_STORAGE_DIR=/mnt/taina/storage
+   TAINA_BACKUP_DIR=/mnt/taina/backup
+   ```
+
+4. **Suba com o disco novo:**
+
+   ```sh
+   ./update.sh
+   ```
+
+O [Passo 8 do guia de instalação](instalacao.md#passo-8-ligar-o-backup)
+detalha a parte do backup, e a tela "Saúde da comunidade" mostra quanto do
+espaço está em uso.
+
+---
+
 ## Dicas de Economia
 
 ### Onde Comprar Barato
@@ -259,8 +316,9 @@ ROI: 4-5 meses
 3. **Monte uma comunidade** de interessados para dividir custos
 4. **Compre as peças** (considere compra conjunta para desconto)
 5. **Siga os guias** de montagem
-6. **Instale o Tainá** seguindo nossa documentação
-7. **Compartilhe** sua experiência com a comunidade!
+6. **Monte o disco** e aponte o Tainá para ele (seção acima)
+7. **Instale o Tainá** seguindo nossa documentação
+8. **Compartilhe** sua experiência com a comunidade!
 
 ---
 

@@ -4,6 +4,7 @@
 - **Autora:** Zoey de Souza Pessanha (`@zoedsoupe`)
 - **Data:** 2026-06-15
 - **Relação:** Refina e estende o `RFC_002_MVP.md`. As Fases 1-2 são _acabamento_ do modelo de permissões já especificado; a Fase 3 (Assembleia) é **expansão de escopo além do MVP** e só começa após aceite deste RFC.
+- **Emenda:** `RFC_006_KERNEL.md` extrai a regra de leitura, as zonas, os papéis, o mural e a assembleia para o kernel (Ypy); o RLS deixa de ser a fronteira externa; a convenção de nomes (seção 5) passa a valer por completo.
 
 ---
 
@@ -33,6 +34,13 @@ Princípio que orienta tudo: **a tensão entre "admin não é deus" (privado por
 - `Maraca.authorize?/4` é reaproveitado sem mudança: `praça OU dono OU permissão explícita`. O RLS continua sendo a fronteira externa da tekoa.
 
 **Decisão técnica:** zona é um `Ecto.Enum` (`~w(casa praca)a`, padrão `:casa`) em `Ybira.File` e `Ybira.Folder`, uma coluna que decide a privacidade do item, explícita e estável a movimentações. A zona da pasta governa só a listagem da própria pasta; **não cascateia** para os filhos. Migração faz _backfill_ dos arquivos existentes para `:praca` (preserva a visibilidade comum de hoje; default `:casa` privatizaria o acervo atual silenciosamente).
+
+> **Emenda (RFC_006):** a regra de leitura (`praça OU dono OU concessão`) e os
+> predicados de zona/papel sobem para o kernel (`Ypy.Maraca.Policy`), e o RLS
+> deixa de ser a fronteira externa: com uma Tekoa por caixa ele fica
+> estacionado, e a fronteira passa a ser o próprio box (o container, na
+> hospedagem). A convenção de nomes da seção 5 passa a valer por completo:
+> `Concessao`, `Proposta`, `Voto`, além dos átomos já fixados.
 
 ---
 
@@ -160,6 +168,11 @@ O RFC_002 não tem decisão coletiva: zelador decide convites/cota/remoção soz
 - **Decisão coletiva depois** (Fase 3, assembleia): atos sensíveis viram **propostas** que a comunidade vê e vota.
 
 **Esboço técnico:** contexto novo `Taina.Assembleia` (`@behaviour` próprio). `Proposal` (`type` é um de remove*member/appoint_zelador/revoke_zelador/change_quota, `payload`, `proposer_id`, `status` é um de open/passed/rejected/expired, `closes_at`) + `Vote` (único por `(proposal_id, ava_id)`). **Divisão de ações:** com voto = atos que afetam permanentemente uma pessoa (remover, nomear/destituir zelador); diretos-mas-registrados = convite, cota. **Regra:** maioria simples dos votos + quórum `ceil(moradores/2)`; expira por worker Oban. Na aprovação, a ação só executa com a proposta aprovada como \_token* de autoridade, **não há caminho unilateral**. Corte mínimo viável: só `remove_member`, provando o ciclo. (Nomear zelador via proposta é como a comunidade ganha mais zeladores além dos convidados na Fase 1.)
+
+> **Emenda (RFC_006):** os atomos do dominio vao em **pt-BR** (`:remover_morador`,
+> `:nomear_zelador`, `:destituir_zelador`, `:mudar_cota`; `:aberta`, `:aprovada`,
+> `:rejeitada`, `:expirada`; voto `:sim`/`:nao`), aplicando a D5 sem excecao nos
+> valores. O kernel `Ypy.Assembleia` faz isso.
 
 ---
 
