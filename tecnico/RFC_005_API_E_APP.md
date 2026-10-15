@@ -172,6 +172,23 @@ Papéis: `pub` (sem auth), `mor` (qualquer morador), `zel` (zeladora). A fatia 1
 | DELETE | /api/v1/members/:id/invite | zel | `revoke_invite/2` | 3 |
 | POST | /api/v1/members/:id/reset-link | zel | `mint_reset_link/2` | 3 |
 
+### Convite e senha (públicos)
+
+O aceite do convite e a redefinição de senha chegam por deep link
+(`taina://convite/:token`, `taina://redefinir/:token`). O link carrega também o
+endereço da caixa (`?host=`), porque quem chega por um convite ainda não tem
+comunidade salva no aparelho. Os quatro são públicos: o token é a credencial.
+Os dois POST devolvem uma **sessão** (token de dispositivo), então a pessoa já
+entra ao terminar; a confirmação de senha é conferida no cliente, que envia um
+único `password`.
+
+| Método | Caminho | Papel | Contexto | Fatia |
+| --- | --- | --- | --- | --- |
+| GET | /api/v1/invites/:token | pub | `invite_status/1` | 3 |
+| POST | /api/v1/invites/:token/accept | pub | `accept_invite/2` mais `create_device_token/2` | 3 |
+| GET | /api/v1/password-resets/:token | pub | `reset_status/1` | 3 |
+| POST | /api/v1/password-resets/:token | pub | `reset_password/3` mais `create_device_token/2` | 3 |
+
 ### Pastas e arquivos
 
 | Método | Caminho | Papel | Contexto | Fatia |
@@ -293,6 +310,13 @@ Não-objetivos do v1, cada um com o gatilho de retorno:
 - Sem refresh token, expiração ou teto de dispositivos (incidente de aparelho perdido num piloto).
 - Sem cache de token (só se o profiling mostrar a resolução dominando).
 - Sem aceite de convite, reset de senha ou revogação de permissão pela API (deep link `taina://convite/:token`).
+
+  *Emenda (app nativo):* o **aceite de convite** e a **redefinição de senha**
+  entraram no v1 (`POST /api/v1/invites/:token/accept` e
+  `POST /api/v1/password-resets/:token`, ambos públicos e devolvendo sessão),
+  porque o app precisa postar o token sem sair para o navegador. O deep link
+  passa a carregar o endereço da caixa (`?host=`). A revogação de permissão
+  pela API continua fora.
 - Sem artefato OpenAPI no código; a tabela de endpoints vive aqui, no `tekoa` (segundo cliente Kotlin ou consumidor público).
 
   *Emenda (RFC_006): invertido em parte. O kernel (Ypy) entrega os **components** OpenAPI e os drift-checa por teste de conformidade; a tabela de endpoints (paths) continua aqui, no `tekoa`.*
