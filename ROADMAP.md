@@ -1,9 +1,9 @@
 # Roadmap Tainá, MVP Realista
 
 **Status:** Ativo
-**Última atualização:** 2026-10-05
-**Versão:** 3.1
-**Lançamento alvo:** `0.1.0` (primeiro lançamento público)
+**Última atualização:** 2026-10-21
+**Versão:** 3.2
+**Lançamento alvo:** MVP (o `0.1.0` foi cortado; a versão atual é `0.4.0`)
 
 > Este roadmap substitui integralmente a versão anterior (v2.0, "PWA Monolith",
 > 2025-2026), conforme a [RFC 002](tecnico/RFC_002_MVP.md). Leia a RFC para o
@@ -21,6 +21,12 @@
 > extraído para o kernel [Ypy](tecnico/RFC_006_KERNEL.md), de que a caixa já
 > depende. Onde este roadmap ainda cita RLS, a
 > [RFC 006](tecnico/RFC_006_KERNEL.md) é a fonte atual.
+>
+> **O que mudou na v3.2 (2026-10-21):** os itens de código das Fases 0-4 estão
+> concluídos e publicados (releases `0.1.0` a `0.4.0`), incluindo a API JSON v1
+> ([RFC 005](tecnico/RFC_005_API_E_APP.md)) e o app nativo no repositório
+> `okena`. O que resta para fechar o MVP não é código: são as provas de campo
+> em [O que falta para o 0.1.0](#o-que-falta-para-o-010).
 
 ---
 
@@ -109,9 +115,9 @@ exigia e do que só ficou visível quando alguém tentou rodar de verdade.
       preenchido, porque o Caddy serve só o domínio.
 - [x] **`build-image.sh`**: instalar a partir do código-fonte, para quando não
       há imagem publicada (antes do primeiro release, ou num fork).
-- [ ] **Publicar a primeira imagem.** O job de docker existe e roda em release,
-      mas **nenhuma release foi criada ainda** e o `ghcr.io/taina-labs/taina`
-      está vazio. Sem isso o `taina setup` não tem o que baixar.
+- [x] **Publicar a primeira imagem.** A imagem está publicada no
+      `ghcr.io/taina-labs/taina` e o `taina setup` baixa dela. Releases `0.1.0`
+      a `0.4.0`.
 - [ ] **Vistoriar o `taina setup` numa máquina real**, do zero, cronometrado.
 - [ ] **Ensaio de restore com pessoa não-técnica** (o gate do runbook).
 - [ ] **Ensaio do `taina update`**: subir, atualizar, conferir, e voltar atrás.
@@ -200,13 +206,14 @@ a Fase 0b (operabilidade) e a transparência somadas, ~32 semanas de trabalho,
 
 ## O que falta para o 0.1.0
 
-O `0.1.0` é o primeiro lançamento público. O caminho crítico é curto e não tem
-nada de codar novo: é **publicar e provar**.
+O `0.1.0` é o primeiro lançamento público. Ele já foi cortado (`0.1.0` a
+`0.4.0` estão publicadas); o caminho crítico que resta é curto e não tem nada
+de codar novo: é **provar em campo**.
 
 ### Bloqueadores (sem isso não existe release)
 
-Nenhum. A `0.1.0` foi cortada: a imagem está publicada no
-`ghcr.io/taina-labs/taina` e o pacote é público.
+Nenhum. As releases estão publicadas: a imagem está no
+`ghcr.io/taina-labs/taina`, o pacote é público e o `taina setup` baixa dela.
 
 > O smoke test da imagem (`.github/workflows/docker-smoke.yml` no repo `taina`)
 > roda em toda tag `v*` e sobe o container de verdade: migrações no boot,
@@ -216,26 +223,27 @@ Nenhum. A `0.1.0` foi cortada: a imagem está publicada no
 
 ### Provas de que funciona (o gate do MVP)
 
-4. **Instalação limpa e cronometrada** numa máquina real, seguindo só o
+1. **Instalação limpa e cronometrada** numa máquina real, seguindo só o
    `guias/instalacao.md`, sem ajuda técnica externa. Anotar onde travar.
-5. **Drill de backup/restore** com 100% de sucesso, feito por alguém não
+2. **Drill de backup/restore** com 100% de sucesso, feito por alguém não
    técnico. É o item mais fácil de pular e o mais caro de pular.
-6. **Ensaio do `taina update`**: subir, atualizar, conferir a saúde, e voltar para
+3. **Ensaio do `taina update`**: subir, atualizar, conferir a saúde, e voltar para
    a versão anterior. Ninguém testou esse caminho ainda.
-7. **Benchmark no Pi 5** (gates das Fases 2 e 3): foto de 4MB + thumbnail < 3s,
+4. **Benchmark no Pi 5** (gates das Fases 2 e 3): foto de 4MB + thumbnail < 3s,
    1080p sem stutter, 10k arquivos fluidos, galeria com 5k fotos.
 
 ### Recomendado, não bloqueia
 
 - Assentar o `docs/ui-prompts/` no repositório (slice 01 responsive pass, slice
-  04 Nhaman cuidados). Hoje ele vive no `.git/info/exclude`, então quem chega
-  pelo GitHub não vê a especificação que orientou o build da interface.
+  04 Nhaman cuidados). Os arquivos já existem na árvore, mas `/docs/` continua
+  no `.git/info/exclude`, então quem chega pelo GitHub ainda não vê a
+  especificação que orientou o build da interface.
 - Conferir os guias citados nas READMEs do `taina` e do `oka`: alguns apontam
   para caminhos que não existem mais.
 
 ### Ordem sugerida
 
-1. Tag de release, imagem publicada, pacote público.
+1. ~~Tag de release, imagem publicada, pacote público.~~ Feito: `0.1.0` a `0.4.0`.
 2. Instalar numa máquina real do zero, cronometrando, e consertar o que travar.
 3. Drill de restore e ensaio do update.
 4. Benchmark no Pi 5.
@@ -243,14 +251,16 @@ Nenhum. A `0.1.0` foi cortada: a imagem está publicada no
 
 O passo 5 vem depois dos outros de propósito: um anúncio de `0.1.0` que
 convida a instalar é um convite para achar o primeiro bug, e a taxa de respostas
-a bugs de instalação cai muito quando você já/installou você mesmo antes.
+a bugs de instalação cai muito quando você mesmo já instalou antes.
 
 ---
 
 ## Pós-MVP (ordenado por valor)
 
-1. **API JSON v1** (token auth, OpenAPI): pré-requisito dos clientes.
-2. **App nativo de backup de fotos** (Flutter; alternativa Tauri mobile).
+1. **API JSON v1** (token auth, OpenAPI): **feito** ([RFC 005](tecnico/RFC_005_API_E_APP.md), release `0.2.0`).
+2. **App nativo** (`okena`, Swift no iOS; Kotlin depois): em desenvolvimento. O
+   app 0.1.0 cobre sessão, pessoas, arquivos, fotos, mural, pedidos de acesso e
+   armazenamento.
 3. **Tainá Conecta**: relay de acesso remoto + backup off-site (assinatura,
    modelo Nabu Casa).
 4. **Guará (chat)**: Channels/Presence.
