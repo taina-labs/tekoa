@@ -114,6 +114,7 @@ Todos os átomos que os contexts podem devolver, mapeados para status e código.
 | `:not_found`, `:no_folder` | 404 | o próprio átomo |
 | `:last_zelador`, `:not_pending`, `:invalid_status`, `:already_has_access`, `:already_readable`, `:already_bootstrapped`, `:not_bootstrapped`, `:circular_reference`, `:storage_quota_exceeded` | 409 | o próprio átomo |
 | `:cannot_request_own`, `:cross_tekoa_owner`, `:invalid_action`, `:mime_not_allowed`, `:missing_file` | 422 | o próprio átomo |
+| `:rendition_pending`, `:rendition_unavailable` (só na miniatura da API; mapa local do `TainaWeb.API.Error`, fora do kernel) | 404 | o próprio átomo |
 | `%Ecto.Changeset{}` | 422 | `validation_failed` |
 | `:rate_limited` | 429 | `rate_limited` |
 | qualquer outro | 500 | `internal_error` |
@@ -131,11 +132,26 @@ Envelope uniforme, um só decoder no cliente:
 
 `limit` (padrão 50, teto 100), `cursor` e `sort` (`name|date|size` mais `asc|desc`) são parseados lenientes na borda.
 
+> **Emenda (review 0.1.0):** as coleções (`/files/manifest`, `/contents`,
+> `/photos`, `/photos/timeline`, `/recent`, `/trash`, `/grants`) levam ETag
+> fraca `W/"<count>-<max_updated_at_unix>"` sobre o conjunto legível inteiro
+> (não sobre a página: paginar não muda o hash). `If-None-Match` igual responde
+> `304` sem corpo. O hash é do escopo: cada pessoa vê o do conjunto que ela
+> mesma lê. O `/files/manifest` pagina por `after` (rkey) com `limit` próprio
+> (padrão 200, teto 1000).
+
 ---
 
 ## 8. Upload, download e miniatura
 
 Upload: `POST /api/v1/files`, multipart, um arquivo. Reusa `Ybira.upload/3`, que já faz cota, MIME por magic bytes e limpeza em erro. O `Plug.Upload` apaga o temporário quando o processo da requisição morre. O `sha256` volta no JSON do arquivo para o cliente de backup pular o que já subiu.
+
+> **Emenda (review 0.1.0):** o JSON do arquivo nasce do shape do kernel
+> (`Ypy.Wire.File.json/1`, intacto) embalado pelo produto
+> (`TainaWeb.API.Serializer.file/2`), que acrescenta `taken_at` (EXIF em UTC
+> com `Z`), `width`, `height`, `rendition` (`ready|pending|unavailable|none`) e
+> `folder` (o rkey da pasta pai resolvido pela regra de leitura, em toda
+> listagem). Quem não é imagem não tem rendição: `none`.
 
 > Achado, não introduzido: o upload da web resolve o destino com `Ybira.get_folder/2` (regra de leitura) e o `upload/3` aceita `folder_id` cru, então hoje um morador pode subir para uma pasta da praça de outra pessoa. A API mantém paridade. Se não for intencional, o conserto é no Ybira (resolver a pasta possuída na borda do upload), não na API.
 
@@ -156,6 +172,7 @@ Papéis: `pub` (sem auth), `mor` (qualquer morador), `zel` (zeladora). A fatia 1
 | GET | /api/v1/instance | pub | `bootstrapped?/0`, `get_tekoa/0` | 1 |
 | POST | /api/v1/session | pub | `authenticate/3` mais `create_device_token/2` | 1 |
 | DELETE | /api/v1/session | mor | `revoke_device/2` | 1 |
+| POST | /api/v1/session/password | mor | `update_password/3` mais `list_devices/1` com `revoke_device/2` (os outros aparelhos) | review 0.1.0 |
 | GET | /api/v1/me | mor | assigns | 1 |
 | GET | /api/v1/devices | mor | `list_devices/1` | 2 |
 | DELETE | /api/v1/devices/:id | mor (dono) / zel | `revoke_device/2` | 2 |
@@ -201,6 +218,8 @@ entra ao terminar; a confirmação de senha é conferida no cliente, que envia u
 | POST | /api/v1/folders/:id/move | mor (dono) | `move_folder/3` | 2 |
 | DELETE | /api/v1/folders/:id | mor (dono) | `delete_folder/2` | 2 |
 | POST | /api/v1/files | mor | `get_folder/2` mais `upload/3` | 1 |
+| GET | /api/v1/files/manifest | mor | `Manifest.page/2` (rkey asc, fora da lixeira) | review 0.1.0 |
+| POST | /api/v1/files/batch | mor | `delete_file/2`, `restore_file/2`, `move_file/3`, `publicar_file/2` ou `tirar_file_da_praca/2`, item a item | review 0.1.0 |
 | GET | /api/v1/files/:id/download | mor (leitura) | `get_file/2` mais `FileServing.serve/2` | 1 |
 | GET | /api/v1/files/:id/thumbnail/:size | mor (leitura) | `get_file/2` mais `FileServing.thumbnail/3` | 1 |
 | GET | /api/v1/files/:id | mor (leitura) | `get_file/2` | 2 |
@@ -226,6 +245,8 @@ entra ao terminar; a confirmação de senha é conferida no cliente, que envia u
 | POST | /api/v1/files/:id/access-request | mor | `fetch_access_target/2` mais `request_access/5` | 3 |
 | GET | /api/v1/access-requests | mor | `list_access_requests/1` | 3 |
 | GET | /api/v1/my-requests | mor | `list_my_requests/1` | 3 |
+| GET | /api/v1/grants | mor | `Maraca.Grants.concedidas/1` e `recebidas/1` (revogadas incluídas) | review 0.1.0 |
+| DELETE | /api/v1/grants/:public_id | mor (dono) | `Maraca.revogar/2` | review 0.1.0 |
 | POST | /api/v1/access-requests/:id/approve | mor (dono) | `approve_access_request/2` | 3 |
 | POST | /api/v1/access-requests/:id/deny | mor (dono) | `deny_access_request/2` | 3 |
 | GET | /api/v1/mural | mor | `list_events/2` | 3 |
