@@ -1,9 +1,8 @@
 # Sistema de Design Tainá
 
 - **Status:** Vivo (aplicável já)
-- **Escopo:** sistema de design do ecossistema Tainá: o produto (superapp / PWA
-  server-rendered em Phoenix LiveView), o site/landing e a documentação (este
-  repositório, Tekoá).
+- **Escopo:** sistema de design do ecossistema Tainá: a interface web em
+  Phoenix LiveView, o app Flutter, o site/landing e a documentação (Tekoá).
 - **Idioma:** pt-BR primeiro. Nomes de marca em Tupi-Guarani, vocabulário
   social em pt-BR familiar, encanamento em inglês (ver seção 10).
 - **Fonte de verdade:** o Penpot (**"Cofre da Comunidade - UI v1"**), espelhado
@@ -63,7 +62,7 @@ Três dialetos definem o tom. Servem para calibrar decisões, não como métrica
   caos artístico.
 - **Movimento: 3 de 10** (estático contido). CSS-first, um momento de impacto
   por navegação (`page-in`), o resto em estados de `hover`/`active`. Design for
-  less usage, not more (ver `tom-de-voz.md` e `RFC_ARQUITETURA.md`).
+  less usage, not more (ver `tom-de-voz.md` e `tecnico/arquivo/RFC_001_ARQUITETURA_PWA.md`).
 
 Palavras para manter na cabeça ao desenhar: **noturno, ancestral, técnico,
 acolhedor, brasileiro sem caricatura, simples sem ser minimalista de vitrine.**
@@ -114,7 +113,7 @@ são o vocabulário que os componentes consomem. Componentes usam só o semânti
 | `forest`     | 300 `#82cba4`, 400 `#5fb88a`, 500 `#3fa171`, 600 `#2f8159`, 700 `#246244`, 900 `#122e22`         | Acento de serviço: **Ybira** (arquivos)  |
 | `moon`       | 300 `#f4dfa6`, 400 `#eccd80`, 500 `#e3bc66`, 600 `#c49a48`, 700 `#9c7836`, 900 `#46350f`         | Acento de serviço: **Jaci** (fotos)      |
 | `sky`        | 300 `#92c3f8`, 500 `#5ba3f5`, 600 `#3f84d6`, 700 `#2f66ac`                                       | Acento de serviço: **Nhaman** (painel)   |
-| `guara`      | 500 `#de5b3f`, 600 `#be4327`                                                                     | Acento de serviço: **Guará** (pós-MVP)   |
+| `guara`      | 500 `#de5b3f`, 600 `#be4327`                                                                     | Acento de serviço: **Guará** (depois do 1.0.0)   |
 | funcionais   | `red-500` `#e5484d`, `red-600` `#c03538`, `amber-500` `#efb54a`                                   | Erro, atenção                             |
 
 ### 3.2 Semânticos (o contrato de consumo)
@@ -358,7 +357,7 @@ micro-animações espalhadas.**
 ## 9. Acessibilidade
 
 A acessibilidade é **tom**, não acabamento (ver `tom-de-voz.md`), e faz parte
-do pilar de transparência (ver `RFC_003`, seção 6).
+do pilar de transparência (ver `tecnico/ARQUITETURA.md`, "Produto e fronteiras").
 
 - **WCAG AAA** como alvo: contraste **7:1** para texto e **3:1** para elementos
   de interface.
@@ -383,7 +382,7 @@ respeitar.
 
 ### Convenção de nomes (uma fonte de verdade)
 
-Três camadas, nunca misturar ao acaso (ver `RFC_003`, seção 5):
+Três camadas, nunca misturar ao acaso (ver `tecnico/ARQUITETURA.md`, "Produto e fronteiras"):
 
 | Camada           | Quando                                              | Exemplos                                             |
 | ---------------- | --------------------------------------------------- | ---------------------------------------------------- |
@@ -420,9 +419,9 @@ tradução. Ninguém angliciza os nomes Tupi.
 - **Anti-engajamento:** nada de badge vermelho de urgência, streak, métrica de
   vaidade, feed algorítmico. Avisos são ambientes e opcionais, e **somem quando
   resolvidos**. Design for less usage, not more.
-- **Privacidade honesta:** a casa é **"promessa de software, não cadeado
-  matemático"**. O Tainá ainda **não** criptografa; nunca prometer que o
-  zelador não consegue ler a casa.
+- **Privacidade honesta:** a casa local é protegida por software e confiança.
+  Nunca prometer E2E. A cifra do backup externo protege a cópia contra o
+  provedor, não impede a leitura por root na caixa.
 - **Poder visível:** quem cuida é zelador(a), nunca dono ou chefe. "Quem cuida
   (Ana) aumentou a cota para 50 GB." Nada de "Admin alterou as configurações".
 - Erros explicam e oferecem saída; vazios convidam e podem ensinar.
@@ -442,12 +441,12 @@ Do sistema de design e do produto. Tratar como lista de reprovação.
 
 **Tainá (produto):**
 
-- Chat (**Guará**) no MVP. Está cortado; nunca propor chat para "ser mais
+- Chat (**Guará**) no 1.0.0. Está cortado; nunca propor chat para "ser mais
   comunitário". O valor está em arquivos, fotos, pessoas e governança.
 - Badge vermelho de urgência, streak, métrica de vaidade, feed algorítmico,
   notificação por padrão. Nada de isca de atenção.
 - "Admin" na interface. A palavra é **zelador(a)**.
-- Prometer criptografia que não existe. A casa é promessa de software.
+- Prometer criptografia local ou E2E que não existe. A casa é promessa de software; a cifra do backup externo protege somente a cópia.
 - Telemetria que fala com SaaS. **Nunca telefonar para casa**: métrica, log e
   telemetria ficam na caixa da comunidade.
 - Múltiplas comunidades por caixa, descoberta pública ou feed entre instâncias.
@@ -479,26 +478,20 @@ Do sistema de design e do produto. Tratar como lista de reprovação.
 
 ## 12. Aplicação
 
-### Produto (PWA superapp)
+### Produto web e app Flutter
 
-É onde este sistema nasce. Tema escuro como padrão, acento de serviço por
-serviço, `bottom-nav` no mobile e `sidebar` no desktop, transições suaves entre
-serviços sem reload, componentes compartilhados (preview de arquivo, upload,
-notificação). Ver `RFC_002_MVP.md` para o escopo e `RFC_ARQUITETURA.md` para a
-arquitetura de referência.
-
-**Manifest do PWA:** usar os tokens do sistema para `theme_color` e
-`background_color` (`--bg-deep` `#060a14` e `--surface-default` `#0f1729`),
-ícones 192 e 512. Atenção: os valores citados na `RFC_ARQUITETURA.md`
-(`#1F2937`/`#111827`) são de um rascunho antigo e **divergem** do sistema
-cometido; onde houver conflito, vale o `tokens.css`.
+O mesmo sistema orienta a interface LiveView e o app Flutter, sem exigir pixels
+idênticos entre plataformas. Tema escuro, acento por serviço, componentes
+compartilhados e navegação própria de cada superfície. Os tokens passam do
+Penpot para `assets/css/tokens.css` e depois para `okena/design/tokens.css`.
+Ver `ROADMAP.md` para o escopo e `tecnico/ARQUITETURA.md` para as fronteiras.
 
 ### Site e landing
 
 - Gradientes inspirados no amanhecer, com parcimônia. Valem no site, não no
   app.
-- Ilustrações de comunidade e servidores, mockups do superapp, seção clara
-  sobre os serviços do MVP (Ybira e Jaci; **sem Guará**).
+- Ilustrações de comunidade e servidores, mockups do cofre, seção clara sobre
+  capturar, guardar e recuperar no 1.0.0 (**sem Guará**).
 - Estado inicial ("ligar, acessar `http://taina.local`, seguir o wizard") é o
   argumento de venda: a experiência de instalação é o produto.
 - Landing não é o lugar do formulário denso nem da grade de dez cards
@@ -508,7 +501,7 @@ cometido; onde houver conflito, vale o `tokens.css`.
 
 - Leitura confortável com hierarquia tipográfica (`type-*`), busca eficiente e
   destaque para blocos de código (mono).
-- Seção dedicada aos padrões do superapp e guias de contribuição de UI/UX.
+- Seção dedicada aos padrões do cofre e guias de contribuição de UI/UX.
 - Mesma paleta noturna, mesma marca; a doc é a "aldeia digital" do projeto.
 
 ---
@@ -524,11 +517,11 @@ cometido; onde houver conflito, vale o `tokens.css`.
 - [ ] Copy em pt-BR pelo glossário; nada de "admin"; erros com saída; vazios
       que ensinam.
 - [ ] Sem emoji e sem AI-typography; acentos pt-BR presentes.
-- [ ] Sem prometer criptografia; sem telefone-para-casa; sem Guará no MVP.
+- [ ] Sem prometer criptografia local ou E2E; sem telefone-para-casa; sem Guará no 1.0.0.
 - [ ] Fala como vizinhança, não como plataforma.
 
 ---
 
-_Alinhado a `briefing.md`, `tom-de-voz.md`, `RFC_002_MVP.md`,
-`RFC_003_GOVERNANCA_E_TRANSPARENCIA.md` e ao sistema cometido em
+_Alinhado a `briefing.md`, `tom-de-voz.md`, `ROADMAP.md`,
+`tecnico/ARQUITETURA.md` e ao sistema cometido em
 `taina/assets/css/`. Documento vivo._

@@ -1,5 +1,7 @@
 # RFC 003: Modelo Social, Governança e Transparência
 
+> **Documento histórico.** As decisões sociais vigentes foram condensadas na [arquitetura atual](../ARQUITETURA.md). Assembleia e E2E não entram no 1.0.0.
+
 - **Status:** Rascunho (proposto)
 - **Autora:** Zoey de Souza Pessanha (`@zoedsoupe`)
 - **Data:** 2026-06-15

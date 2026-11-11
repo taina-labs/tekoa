@@ -1,38 +1,25 @@
 # Tekoá
 
-Tekoá é o repositório público de documentação e guias do ecossistema **Tainá**.  
-O nome vem do Tupi-Guarani e significa "lugar onde se vive" ou "aldeia", refletindo a ideia de comunidade, partilha e construção coletiva.
+Tekoá é a documentação pública do ecossistema **Tainá**: a caixa de uma comunidade que decidiu cuidar dos próprios dados.
 
-Este espaço concentra documentação técnica, guias de contribuição, tutoriais, referências de design e materiais conceituais, servindo como ponto de partida para quem deseja conhecer ou colaborar com o projeto.
+## Comece aqui
 
----
+- [Roadmap](ROADMAP.md): o que existe, o que entra no `1.0.0`, o que vem depois e o que é só ideia.
+- [Arquitetura atual](tecnico/ARQUITETURA.md): decisões vigentes e desenho técnico do próximo marco.
+- [Como documentamos](tecnico/README.md): por que não trabalhamos mais com RFCs longas por default.
+
+O `1.0.0` busca uma alternativa real, usável e confiável a nuvens pagas de arquivos e fotos: app Flutter, espelho do rolo no aparelho e backup cifrado fora da caixa, com recuperação ensaiada.
 
 ## Guias do operador
 
-Para colocar o Tainá no ar, comece por
-[instalação](guias/instalacao.md).
-
-- [Instalação](guias/instalacao.md): colocar no ar do zero, em menos de 30
-  minutos.
-- [Acesso remoto](guias/acesso-remoto.md): Tailscale, Headscale, WireGuard,
-  domínio público.
-- [Backup e restauração](guias/runbook-backup-restore.md): procedimento e
-  ensaio (drill).
+- [Instalação](guias/instalacao.md): colocar a caixa no ar.
+- [Acesso remoto](guias/acesso-remoto.md): Tailscale, Headscale, WireGuard ou domínio público.
+- [Backup e restauração](guias/runbook-backup-restore.md): procedimento e ensaio.
 - [Hardware](guias/compras-hardware.md): o que comprar e como montar.
+- [Ensaio do MVP](guias/ensaio-mvp-vm-macos.md): evidências e pendências de validação.
 
-O [roadmap](ROADMAP.md) diz o que está pronto e o que ainda falta para o
-`0.1.0`.
+## Contribuir
 
----
+Leia o [Guia de Contribuição](CONTRIBUTING.md) e o [Código de Conduta](CODE_OF_CONDUCT.md). Para mudanças de escopo ou arquitetura, comece pelo roadmap e pela arquitetura atual, não pelas RFCs arquivadas.
 
-## Como Contribuir
-
-1. Leia o [Guia de Contribuição](CONTRIBUTING.md) para entender como colaborar.
-2. Abra uma issue para propor melhorias ou reportar problemas.
-3. Participe das discussões na comunidade para ajudar a evoluir o projeto.
-
----
-
-## Objetivo do Repositório
-
-Este repositório serve como a **aldeia digital do projeto Tainá**: um espaço aberto, acessível e bem documentado, para reunir a comunidade, facilitar o aprendizado e garantir que qualquer pessoa possa contribuir de forma significativa.
+O nome Tekoá vem do Tupi-Guarani e significa "lugar onde se vive" ou "aldeia".

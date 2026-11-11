@@ -26,14 +26,14 @@ Escreva para a pessoa **menos técnica** da comunidade. Sem jargão, sem conheci
 
 ### Honesto, promessa que se cumpre
 
-Nunca prometa o que o sistema não garante. A privacidade da casa é **promessa de software e de confiança**, não criptografia.
+Nunca prometa o que o sistema não garante. A privacidade da casa local é **promessa de software e de confiança**, não criptografia. O backup externo cifrado do 1.0.0 protege a cópia contra o provedor, mas não muda o acesso de root na caixa.
 
-- Bom: "Promessa de software, não cadeado matemático: o Tainá ainda não criptografa os arquivos. Confie no servidor como confiaria em quem hospeda a caixa da comunidade."
+- Bom: "Só você e quem você autorizou abrem este arquivo pelo Tainá."
 - Evite: "Seus arquivos são 100% privados e ninguém nunca poderá vê-los."
 
 ### Anti-engajamento, calma é o padrão
 
-"Design for less usage, not more" (`RFC_ARQUITETURA`). Nada de iscas de atenção: sem badge vermelho de urgência, sem sequências/streaks, sem padrões escuros. Avisos são **ambientes e opcionais**.
+"Design for less usage, not more" (princípio da RFC 001, em `tecnico/arquivo/`). Nada de iscas de atenção: sem badge vermelho de urgência, sem sequências/streaks, sem padrões escuros. Avisos são **ambientes e opcionais**.
 
 - Bom: "2 pedidos esperando sua resposta" (um aviso calmo, que some quando resolvido)
 - Evite: "VOCÊ TEM 2 PEDIDOS! Não perca! Responda agora!"
@@ -53,7 +53,7 @@ Texto claro e curto, contraste e rótulos adequados, ícone sempre com texto, re
 
 ## 2. Convenção de nomes (uma fonte de verdade)
 
-Três camadas, deliberadas, nunca misturar ao acaso (ver `tecnico/RFC_003_GOVERNANCA_E_TRANSPARENCIA.md` seção 5):
+Três camadas, deliberadas, nunca misturar ao acaso (ver `tecnico/ARQUITETURA.md`):
 
 | Camada             | Quando                                                                  | Exemplos                                                                 |
 | ------------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
@@ -91,7 +91,7 @@ Três camadas, deliberadas, nunca misturar ao acaso (ver `tecnico/RFC_003_GOVERN
 | Registro do que aconteceu   | **mural**                             | "log", "feed", "atividade"                                  |
 | Estado da máquina, legível  | **Saúde da comunidade** (painel)      | "dashboard", "métricas"                                     |
 | Pedir para abrir uma casa   | **pedir acesso**                      | "solicitar permissão"                                       |
-| Decisão coletiva (pós-MVP)  | **assembleia**                        | "votação", "governança"                                     |
+| Decisão coletiva (depois do 1.0.0) | **assembleia**                        | "votação", "governança"                                     |
 | Nome de acesso da pessoa    | **nome de usuário** (`username`)      | "login", "user", "e-mail"                                   |
 | Nome que aparece para todos | **nome de exibição** (`display_name`) | "apelido", "perfil"                                         |
 

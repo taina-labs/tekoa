@@ -1,5 +1,7 @@
 # RFC 004: Produto Universidade (Workspace soberano), adiado
 
+> **Ideia arquivada.** Produto separado, sem implementação planejada. As referências a RLS e E2E não descrevem o escopo atual.
+
 - **Status:** Adiado (rascunho mínimo, nao implementar)
 - **Autora:** Zoey de Souza Pessanha (`@zoedsoupe`)
 - **Data:** 2026-06-24

@@ -1,8 +1,10 @@
 # RFC 002, Tainá MVP: Arquitetura Revisada e Plano de Implementação
 
+> **Documento histórico.** Registra o reenquadramento do MVP, mas contém decisões superadas. Use o [roadmap](../../ROADMAP.md) e a [arquitetura atual](../ARQUITETURA.md).
+
 **Status:** Proposta
 **Data:** 2026-06-09
-**Substitui:** `ROADMAP.md` (integralmente) e as seções de entrega/cliente da `RFC_ARQUITETURA.md` (RFC 001)
+**Substitui:** `ROADMAP_v3.2.md` (integralmente) e as seções de entrega/cliente da `RFC_ARQUITETURA.md` (RFC 001)
 **Emenda:** `RFC_006_KERNEL.md` extrai o núcleo para a biblioteca Ypy, troca Postgres por SQLite no box, rebaixa o RLS e transforma "Tainá Hospedada" em frota de caixas por Tekoa.
 **Autoria:** @zoedsoupe + revisão técnica
 

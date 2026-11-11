@@ -4,7 +4,7 @@
 
 Backup que não foi testado não é backup. Este runbook tem duas partes: o
 procedimento de restauração (o que fazer quando precisar) e o ensaio (o
-"drill"), que é uma exigência de lançamento do Tainá (RFC 002, gate da Fase 4):
+"drill"), que é uma exigência do [1.0.0](../ROADMAP.md):
 uma pessoa não-técnica precisa conseguir restaurar seguindo este guia, num
 ensaio com 100% de sucesso, antes de a comunidade depender disso para valer.
 

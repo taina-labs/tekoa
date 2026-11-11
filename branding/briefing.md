@@ -6,16 +6,16 @@
 
 A documentação e colaboração pública do projeto serão centralizadas em **Tekoá**, um repositório aberto de conhecimento cujo nome remete ao espaço coletivo de uma aldeia, um ponto de encontro da comunidade global.
 
-### Arquitetura: Superapp PWA
+### Produto web e app Flutter
 
-Tainá é entregue como um **Progressive Web App (PWA)** no formato de **superapp**, uma única aplicação que integra múltiplos serviços em uma experiência coesa e fluida. Inspirado em superapps orientais como WeChat, Gojek e Grab, mas adaptado à sensibilidade de design ocidental e à identidade brasileira, Tainá combina:
+Tainá tem uma interface web server-rendered em Phoenix LiveView e um app Flutter para iOS e Android. As duas superfícies compartilham identidade, tokens e vocabulário, sem impor a mesma interação em plataformas diferentes.
 
-- **Unificação de serviços** em uma interface consistente
-- **Navegação centralizada** com acesso rápido entre funcionalidades
-- **Experiência app-like** sem necessidade de apps nativos separados
-- **Mobile-first** com design responsivo para todos os dispositivos
+- **Unificação do cofre** em uma experiência consistente
+- **Navegação própria de cada superfície**, sem simular app nativo no navegador
+- **Mobile-first** na web e clientes Flutter no telefone
+- **Ciclo completo**: capturar, guardar e recuperar
 
-O MVP (2025-2026) focará em três serviços fundacionais: **Ybira** (arquivos), **Jaci** (fotos) e **Guará** (mensagens), com expansão gradual para o ecossistema completo.
+O 1.0.0 reúne Maracá, Ybira, Jaci e Nhaman, acrescenta o espelho unidirecional do rolo no app e o backup cifrado fora da caixa. Guará e os demais contextos ficam para depois.
 
 ---
 
@@ -93,31 +93,29 @@ Cores inspiradas na **natureza brasileira** (aurora, floresta, terra) e no **cé
 
 ---
 
-## Aplicações dos Serviços (Superapp)
+## Aplicações dos Serviços
 
-### Serviços MVP (2025-2026)
+### Contextos do cofre e do 1.0.0
 
-Três serviços fundacionais compõem o superapp inicial, cada um com identidade visual própria mas integrada:
+| Contexto | Função | Nome | Cor Base | Status |
+| --- | --- | --- | --- | --- |
+| Identidade e acesso | Contas, convites, papéis e concessões | **Maracá** | Ember | Existe |
+| Armazenamento | Arquivos, pastas, zonas e cotas | **Ybira** | Verde-escuro | Existe |
+| Fotos e memórias | Galeria, linha do tempo e espelho do rolo | **Jaci** | Creme/Dourado | Galeria existe; espelho no 1.0.0 |
+| Operação | Instalação, saúde, backup e atualização | **Nhaman** | Azul-elétrico | Local existe; backup externo no 1.0.0 |
+| Clientes | App iOS e Android | **Okena** | Usa os tokens do produto | App existe; espelho no 1.0.0 |
 
-| Serviço                       | Função                                                   | Nome      | Significado (Tupi-Guarani)   | Cor Base      | Status       |
-| ----------------------------- | -------------------------------------------------------- | --------- | ---------------------------- | ------------- | ------------ |
-| **Armazenamento de Arquivos** | Drive seguro, navegação iPad-like, preview de documentos | **Ybira** | Árvore, raízes, crescimento  | Verde-escuro  | MVP (Fase 2) |
-| **Fotos e Memórias**          | Galeria, álbuns, upload automático                       | **Jaci**  | Lua, memória e ciclos        | Creme/Dourado | MVP (Fase 3) |
-| **Mensageiro Privado**        | Chat real-time, DM e grupos, anexos de mídia             | **Guará** | Lobo-guará, veloz e protetor | Vermelho      | MVP (Fase 4) |
+### Visão posterior
 
-### Serviços Pós-MVP (2027+)
+| Contexto | Função | Nome | Status |
+| --- | --- | --- | --- |
+| Mensagens e assembleia | Chat e deliberação comunitária | **Guará** | Depois do 1.0.0 |
+| Vídeo | Biblioteca e streaming | **Araci** | Ideia |
+| Música e áudio | Playlists, podcasts e audiolivros | **Arapa** | Ideia |
+| Casa inteligente | Automação e sensores | **Ka'a** | Ideia |
+| Monitoração | Observabilidade da caixa | **Karai** | Ideia |
 
-Expansão gradual do ecossistema conforme feedback da comunidade:
-
-| Serviço                      | Função                                 | Nome       | Significado (Tupi-Guarani) | Cor Base      |
-| ---------------------------- | -------------------------------------- | ---------- | -------------------------- | ------------- |
-| Streaming de Filmes e Séries | Biblioteca de mídia tipo Netflix/Prime | **Araci**  | Aurora, deusa do amanhecer | Azul-água     |
-| Música, Podcasts e Áudio     | Rádio pessoal, playlists, audiolivros  | **Arapa**  | Som/voz (_araponga_)       | Verde-claro   |
-| Automação Residencial        | Casa inteligente, IoT                  | **Ka'a**   | Floresta viva e conectada  | Verde         |
-| Segurança e Proteção         | Firewall, backup, monitoramento        | **Karai**  | Espírito do fogo, proteção | Laranja       |
-| Painel de Controle           | Dashboard central de serviços          | **Nhaman** | Criador primordial         | Azul-elétrico |
-
-**Nota:** Cada serviço mantém cor de acento própria, mas compartilha componentes e padrões visuais do superapp.
+Cada contexto pode manter cor de acento própria, mas compartilha componentes e padrões visuais do produto.
 
 ---
 
@@ -132,11 +130,11 @@ Expansão gradual do ecossistema conforme feedback da comunidade:
 5. **Responsividade Total**: Design fluido, mobile-first
 6. **Coesão entre Serviços**: Navegação consistente, componentes reutilizáveis
 
-### Navegação de Superapp
+### Navegação do cofre
 
 #### Mobile (Prioritário)
 
-- **Bottom Navigation Bar**: 3-5 itens principais (Ybira, Jaci, Guará + Home)
+- **Bottom Navigation Bar**: poucos itens principais do cofre, definidos pelos boards atuais
 - **Ícones + labels**: Sempre visíveis para clareza
 - **Touch targets**: Mínimo 44x44px
 - **Transições suaves**: Entre serviços sem reload
@@ -155,7 +153,7 @@ Expansão gradual do ecossistema conforme feedback da comunidade:
 - **Ícones lineares** com consistência visual entre serviços
 - **Espaçamento amplo**: criando respiro e legibilidade
 - **Animações suaves**: reforçando uma experiência acolhedora
-- **Service Switcher**: Component unificado para alternar entre Ybira/Jaci/Guará
+- **Navegação compartilhada**: componentes coerentes entre Documentos, Galeria, Moradores e operação
 - **Upload Progress**: Component compartilhado (usado em todos os serviços)
 
 ### Padrões de Interface
@@ -175,99 +173,37 @@ Expansão gradual do ecossistema conforme feedback da comunidade:
 
 - Gradientes inspirados no amanhecer
 - Ilustrações de comunidade e servidores
-- Demonstração visual do superapp (mockups interativos)
-- Seção clara sobre os três serviços MVP
+- Demonstração visual do cofre e dos clientes
+- Seção clara sobre capturar, guardar e recuperar
 
-### PWA Superapp (Produto Principal)
+### Interface web e app Flutter
 
-- **Tema escuro como padrão**: modo claro opcional
-- **Service-specific accents**: Cada serviço com cor de destaque
-- **Bottom nav mobile**: Sempre acessível, com indicadores de contexto
-- **Sidebar desktop**: Persistente, com ícones + labels
-- **Transições entre serviços**: Suaves, sem reload de página
-- **Upload universal**: Component compartilhado entre Ybira, Jaci e Guará
-- **Preview modal**: Reutilizado para arquivos, fotos e anexos de mensagens
+- **Tema escuro**: tema único, sem variante clara no produto atual
+- **Acentos por contexto**: cada serviço com sua cor de destaque
+- **Navegação por plataforma**: bottom nav quando fizer sentido no telefone e sidebar no desktop
+- **Upload compartilhado**: estados de progresso, pausa, erro e conclusão coerentes
+- **Preview e galeria**: componentes reutilizados para arquivos e fotos
+- **Espelho no app**: estado e configuração ficam no Flutter, sem criar uma superfície duplicada na web
 
-### Instalação PWA
+### Onboarding e clientes
 
-- **Prompt customizado**: Não usar browser default
-- **Onboarding**: Tour guiado pelos três serviços MVP
-- **Icon per service**: Home screen pode ter ícone por serviço (iOS/Android)
-- **App-like experience**: Sem chrome de navegador quando instalado
+- **Convite como chegada**: link, QR e deep link conduzem a pessoa à comunidade
+- **Instalação guiada da caixa**: primeiro boot compreensível para quem não é técnico
+- **Ícones e abertura**: assets próprios de iOS e Android derivados dos tokens
+- **Validação local**: simulador iOS e emulador Android são portões do 1.0.0
 
 ### Documentação (Tekoá)
 
 - Leitura confortável com tipografia hierárquica
 - Busca eficiente e destaque para blocos de código
-- Seção dedicada a design patterns do superapp
+- Seção dedicada a design patterns do cofre
 - Guias de contribuição UI/UX
 
 ---
 
-## Design de Superapps: Oriental vs Ocidental
+## Referências de navegação
 
-### Filosofias de Design
-
-**Superapps Orientais (WeChat, Gojek, Grab, Line):**
-
-- **Densidade informacional alta**: Telas cheias de opções e atalhos
-- **Descoberta por exploração**: Usuários navegam para encontrar features
-- **Mini-apps integrados**: Ecossistema de terceiros dentro do app
-- **Gamificação forte**: Recompensas, badges, sistemas de pontos
-- **Cores vibrantes**: Alto contraste, estimulação visual constante
-
-**Superapps Ocidentais (Revolut, PayPal, Notion):**
-
-- **Minimalismo**: Foco em poucas ações por tela
-- **Descoberta por onboarding**: Features explicadas progressivamente
-- **Integração nativa**: Serviços próprios, não terceirizados
-- **Funcionalidade sobre gamificação**: Eficiência e clareza
-- **Paletas suaves**: Contraste balanceado, descanso visual
-
-### Abordagem Tainá: Síntese Cultural
-
-Tainá busca o **equilíbrio entre praticidade ocidental e fluidez oriental**, adaptado à sensibilidade brasileira:
-
-- **Clareza com riqueza**: Interface limpa, mas com acesso rápido a múltiplas features
-- **Descoberta intuitiva**: Navegação óbvia, mas com easter eggs e atalhos para power users
-- **Densidade contextual**: Informação densa onde necessário (chat), minimalista onde possível (galeria)
-- **Cores com propósito**: Paleta brasileira vibrante mas não cansativa
-- **Mobile-first global**: Touch otimizado, mas não ignora desktop
-
-### Referências Visuais de Superapps
-
-**Para estudar navegação e patterns:**
-
-- **WeChat** (China): Super-tab bar, mini-programs, unified search
-- **Gojek** (Indonésia): Grid de serviços, cores vibrantes por categoria
-- **Grab** (Sudeste Asiático): Cartões contextuais, navegação por gestos
-- **Revolut** (Europa): Minimalismo, animações sutis, hierarquia clara
-- **Notion** (Global): Sidebar persistente, workspace switching
-
-### Estudos e Recursos Recomendados
-
-**Artigos e Research:**
-
-- Nielsen Norman Group: "Designing Superapps" (2023)
-- UX Collective: "Super Apps: The Future of Mobile Experience"
-- Smashing Magazine: "Cultural Differences in UX Design"
-- Google Material Design: "Navigation Patterns for Mobile"
-- Apple HIG: "Tab Bars and Navigation"
-
-**Case Studies:**
-
-- "How WeChat Became China's Everything App" (Andreessen Horowitz)
-- "Gojek's Design System Evolution" (Medium - Gojek Design)
-- "Revolut's Path to 20M Users" (Product Coalition)
-- "Building a Superapp: Lessons from Southeast Asia" (a16z)
-
-**Design Systems para Referência:**
-
-- Ant Design (China) - densidade e componentes
-- Material Design (Google) - padrões globais
-- Polaris (Shopify) - clareza e funcionalidade
-- Carbon (IBM) - acessibilidade e escala
-- Lightning (Salesforce) - enterprise patterns
+A referência não é reproduzir um superapp. O cofre precisa de poucas ações por tela, descoberta progressiva e nenhuma gamificação. Material Design e Apple HIG orientam padrões de plataforma; os boards do Penpot continuam sendo a fonte visual do Tainá.
 
 ## Referências e Inspirações
 
@@ -276,7 +212,7 @@ Tainá busca o **equilíbrio entre praticidade ocidental e fluidez oriental**, a
 - **Arquitetura moderna**: Linha limpa, curvas, harmonia espacial
 - **Design de software**: Projetos open source de identidade forte
 - **Cyberpunk tropical**: Estética de futuro com raízes culturais
-- **Superapps globais**: Navegação fluida, integração de serviços
+- **Ecossistemas coesos**: Navegação fluida e integração de serviços
 - **Design systems brasileiros**: Estética local com padrões internacionais
 
 **Evitar:** Clichês (futebol, carnaval) e estereótipos, tribalismo literal, cores saturadas demais, complexidade visual desnecessária, apropriação cultural, densidade oriental excessiva sem contexto.
@@ -292,16 +228,16 @@ Tainá busca o **equilíbrio entre praticidade ocidental e fluidez oriental**, a
 - **Fontes**: WOFF2 otimizado, fallbacks web-safe
 - **Imagens**: WebP com fallback JPEG, lazy loading
 
-### PWA Requirements
+### Requisitos dos clientes
 
-- **Manifest.json**: Ícones 192x192, 512x512, cores de tema
-- **Service Worker**: Caching strategy para offline-first
-- **Touch icons**: Apple touch icon, favicon sizes variados
-- **Splash screens**: iOS/Android adaptive
+- **Tokens compartilhados**: Penpot, CSS da caixa e espelho do Okena sem deriva
+- **Ícones e splash screens**: assets próprios para iOS e Android
+- **Sem offline-first**: polling, cache ou background somente dentro do escopo atual
+- **Sem PWA obrigatório**: a web é LiveView e os clientes móveis são Flutter
 
 ### Acessibilidade (A11y)
 
-- **Padrões WCAG AAA** em todo o superapp
+- **Padrões WCAG AAA** em todo o produto
 - **Ícones com labels**: Sempre acompanhados de texto (visible ou sr-only)
 - **Cores secundadas por símbolos**: Não depender apenas de cor
 - **Keyboard navigation**: Tab order lógico, shortcuts documentados
@@ -311,11 +247,10 @@ Tainá busca o **equilíbrio entre praticidade ocidental e fluidez oriental**, a
 
 ### Performance
 
-- **Lighthouse PWA score**: Meta 90+ em todas as métricas
-- **Bundle size**: Code splitting por serviço
-- **Image optimization**: Compressão automática, responsive images
-- **Lazy loading**: Components e routes sob demanda
-- **Prefetching**: Links de navegação antecipados
+- **Web enxuta**: assets e imagens otimizados, carregamento sob demanda
+- **App verificado**: analyzer, testes e builds locais em iOS e Android
+- **Mídia com streaming**: uploads e downloads não carregam arquivos grandes inteiros na memória
+- **Benchmark separado**: resultados em VM não são apresentados como medições de Pi 5
 
 ### Responsive Breakpoints
 

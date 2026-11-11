@@ -1,330 +1,75 @@
-# Roadmap Tainá, MVP Realista
-
-**Status:** Ativo
-**Última atualização:** 2026-10-21
-**Versão:** 3.2
-**Lançamento alvo:** MVP (o `0.1.0` foi cortado; a versão atual é `0.4.0`)
-
-> Este roadmap substitui integralmente a versão anterior (v2.0, "PWA Monolith",
-> 2025-2026), conforme a [RFC 002](tecnico/RFC_002_MVP.md). Leia a RFC para o
-> racional completo de cada decisão.
->
-> **O que mudou na v3.1 (2026-10-05):** as listas de tarefas foram marcadas
-> conforme o código realmente mergesado, e a Fase 0 ganhou uma subdivisão
-> (operabilidade) que é o caminho crítico do lançamento. O gate do `0.1.0`
-> está isolado em [O que falta para o 0.1.0](#o-que-falta-para-o-010).
->
-> **O que mudou depois do v3.1 (RFC 006):** a caixa deixou de usar PostgreSQL
-> com Row-Level Security. Ela agora guarda tudo num arquivo SQLite e o
-> isolamento entre comunidades passou a ser da camada da aplicação, coberto
-> por testes de isolamento que rodam em toda mudança. O núcleo estável foi
-> extraído para o kernel [Ypy](tecnico/RFC_006_KERNEL.md), de que a caixa já
-> depende. Onde este roadmap ainda cita RLS, a
-> [RFC 006](tecnico/RFC_006_KERNEL.md) é a fonte atual.
->
-> **O que mudou na v3.2 (2026-10-21):** os itens de código das Fases 0-4 estão
-> concluídos e publicados (releases `0.1.0` a `0.4.0`), incluindo a API JSON v1
-> ([RFC 005](tecnico/RFC_005_API_E_APP.md)) e o app nativo no repositório
-> `okena`. O que resta para fechar o MVP não é código: são as provas de campo
-> em [O que falta para o 0.1.0](#o-que-falta-para-o-010).
-
----
-
-## Visão
-
-**MVP = cofre de arquivos e fotos da comunidade, com instalação indolor.**
-
-O Tainá não tenta substituir o Nextcloud hoje; compete em **experiência de
-instalação e operação**, uma comunidade não-técnica coloca um servidor no ar
-em menos de 30 minutos e nunca tem medo de atualizar.
-
-Princípios desta versão:
-
-- **Backend-first.** Contexts, autorização, storage e instalação vêm antes de
-  qualquer UI. A interface web (Phoenix LiveView, server-rendered) é
-  implementada em bloco quando o backend correspondente estiver estável.
-- **Uma Tekoa (comunidade) por instância, com enforcement rígido**: o sistema
-  recusa a criação de uma segunda comunidade (função do context + índice único
-  no banco).
-- **Chat (Guará) fora do MVP.** Comunidades já usam Signal/WhatsApp; arquivos
-  e fotos são onde a soberania de dados importa. Guará volta no pós-MVP.
-- **PWA offline-first descartado.** App nativo de backup de fotos
-  (candidato principal: **Flutter**; alternativa: **Tauri mobile**) vem no
-  pós-MVP, atrás de uma API JSON.
-- **Stack:** Elixir 1.20 / OTP 28, Phoenix 1.8, SQLite (um arquivo por caixa,
-  isolamento entre comunidades na camada da aplicação), Oban para jobs, libvips
-  para mídia. O núcleo estável mora no kernel [Ypy](tecnico/RFC_006_KERNEL.md).
-
----
-
-## Plano de Implementação
-
-Premissa: dev solo, tempo parcial (~10-15h/semana). Cada fase é uma **fatia
-vertical com critério de saída (gate)**; não se inicia a próxima sem fechar o
-gate.
-
-Legenda: `[x]` mergesado e verificado no código, `[~]` parcial, `[ ]` pendente.
-
-### Fase 0, Fundação e correção (3 semanas)
-
-- [x] Corrigir `Ybira.upload/2` (corpo vazio, implementar de verdade).
-- [x] Corrigir campos inexistentes em `Ybira.check_capacity/2`.
-- [x] Corrigir colisão `File` (stdlib) em `Ybira.get_file/1`.
-- [x] Corrigir typo `:filehash` -> `:file_hash` no changeset de arquivo.
-- [x] Padronizar `public_id` com `PublicId, autogenerate: true` em todos os
-      schemas.
-- [x] **Ligar o RLS de verdade:** `prepare_query/3` que levanta exceção sem
-      contexto de tekoa; `FORCE ROW LEVEL SECURITY`; teste de isolamento
-      cross-tekoa com role não-superuser.
-- [x] Rota `/health` (healthcheck do container aponta para ela).
-- [x] `Ecto.Migrator` no boot do release.
-- [x] Migração de enforcement single-tekoa (índice único).
-- [x] README do repo `taina` sem menção a XRPC; docs alinhadas à RFC 002.
-
-**Gate:** `mix precommit` verde; teste de isolamento RLS passando; container
-sobe saudável com migrações automáticas.
-
-> **Status (2026-10-05): gate fechado.** `mix precommit` verde (221 testes,
-> dialyzer e credo limpos). Migrações no boot e `/health` presentes.
-
-#### Fase 0b, Operabilidade e deploy (3 semanas)
-
-Esta subdivisão não existia na v3.0 do roadmap. Ela nasceu do que a Fase 4
-exigia e do que só ficou visível quando alguém tentou rodar de verdade.
-
-- [x] Dockerfile de produção (Elixir 1.20 / OTP 28, multi-arch).
-- [x] Migrações automáticas no boot do release (`Taina.Release.migrate`).
-- [x] `taina setup`: gera o segredo, escreve `taina.conf`, sobe o container,
-      imprime a URL
-      do assistente de setup. Idempotente (nunca sobrescreve um `taina.conf`).
-- [x] `taina update`: baixa a imagem, reinicia, confere a saúde, e diz como
-      voltar atrás se der errado.
-- [x] Proxy reverso com HTTPS automático (Caddy; Let's Encrypt com
-      `TAINA_DOMAIN`, certificado local sem ele).
-- [x] Só o Caddy exposto. O app fala HTTP na rede interna do Compose.
-- [x] Backup agendado com verificação de restore em CI (`mix taina.backup.verify`).
-- [x] Runbook de backup e restauração documentado.
-- [x] Guia de acesso remoto (Tailscale, Headscale, WireGuard, domínio).
-- [x] Workflow de CD: build e push multi-arch (amd64/arm64) no release-please.
-- [x] **`/app/backups` criado e com dono no Dockerfile.** Sem isso o volume de
-      backup nascia root-owned e o Nhaman falhava com `:eacces`.
-- [x] **Rotação de log dos containers** (10 MB x 3 arquivos). O logger padrão
-      do Docker nunca rotaciona e enche o disco até o PostgreSQL cair.
-- [x] **Sondagem de saúde de dentro do container do app.** A sonda anterior
-      (`https://localhost/health`) nunca podia passar com `TAINA_DOMAIN`
-      preenchido, porque o Caddy serve só o domínio.
-- [x] **`build-image.sh`**: instalar a partir do código-fonte, para quando não
-      há imagem publicada (antes do primeiro release, ou num fork).
-- [x] **Publicar a primeira imagem.** A imagem está publicada no
-      `ghcr.io/taina-labs/taina` e o `taina setup` baixa dela. Releases `0.1.0`
-      a `0.4.0`.
-- [ ] **Vistoriar o `taina setup` numa máquina real**, do zero, cronometrado.
-- [ ] **Ensaio de restore com pessoa não-técnica** (o gate do runbook).
-- [ ] **Ensaio do `taina update`**: subir, atualizar, conferir, e voltar atrás.
-
-**Gate:** uma pessoa não-técnica instala em menos de 30 minutos seguindo só o
-`guias/instalacao.md`, num drill de restore, e numa atualização.
-
-### Fase 1, Maraca: identidade e setup (6 semanas)
-
-- [x] Implementar `Maraca` cumprindo `Maraca.Behaviour` (convite, confirmação,
-      autenticação, autorização, permissões, solicitações de acesso).
-- [x] `Taina.Scope` + plug/on_mount montando o scope da sessão.
-- [x] Setup de primeiro boot: criar a Tekoa única + zelador(a).
-- [x] Login/logout, rotação de sessão, rate limit de tentativas.
-- [x] Convite por link + QR code (e-mail **descartado** por completo, RFC 003
-      D10: não há coluna de e-mail nem aparato de confirmação).
-- [x] Admin: listar membros, papéis, desativar conta.
-- [x] Migração `admin`->`zelador`, `member`->`morador`, múltiplos zeladores
-      (RFC 003 D3).
-- [x] Zonas `casa`/`praca` com a regra de leitura em todo caminho de leitura,
-      incluindo thumbnail e download (RFC 003 D1/D2).
-- [x] `request_access` generalizado para qualquer morador(a) + `list_my_requests`
-      (RFC 003 D4).
-
-**Gate:** instância nova, do `taina setup` ao segundo morador logado, sem
-sem tocar em terminal depois do install. Cobertura de testes nos fluxos de auth.
-
-> **Status (2026-10-05): gate fechado no código, ainda não validado numa
-> máquina real.** Todos os itens implementados e testados (221 testes), mas o
-> gate fala em "do `taina setup` ao segundo morador logado, sem tocar em
-> terminal", e isso só se prova no [ensaio](#o-que-falta-para-o-010).
-
-### Fase 2, Ybira: arquivos (8 semanas)
-
-- [x] Layout de storage por tekoa/ano/mês com SHA-256 registrado.
-- [x] Upload (multi-arquivo, validação por magic bytes, cota).
-- [x] Pastas hierárquicas, renomear/mover/excluir.
-- [x] Lixeira: soft delete, restauração, purga em 30 dias (Oban).
-- [x] Download com `Range` (streaming de vídeo/áudio básico).
-- [x] Quotas visíveis e configuráveis.
-
-**Gate (benchmark em Pi 5):** upload de foto de 4MB + thumbnail < 3s;
-streaming 1080p sem stutter; 10k arquivos paginados com fluidez. Testes de
-cota e de isolamento RLS sobre arquivos.
-
-> **Status (2026-10-05): implementação e testes fechados; benchmark de hardware
-> real pendente.** O gate exige medição num Pi 5, e a suíte roda em CI num
-> runner x86. É o gate mais barato de fechar de todos: é medir, não codar.
-
-### Fase 3, Jaci-lite: fotos (5 semanas)
-
-- [x] Worker Oban de thumbnails (2 tamanhos).
-- [x] Grade de fotos responsiva com scroll infinito.
-- [x] Linha do tempo agrupada por data (EXIF quando houver).
-- [x] Visualização fullscreen.
-
-**Gate:** galeria com 5k fotos navegável com fluidez num Pi 5.
-
-> **Status (2026-10-05): implementação e testes fechados; benchmark pendente.**
-> Mesma situação da Fase 2.
-
-### Fase 4, Transparência e pilotos (6 semanas)
-
-A v3.0 do roadmap chamava esta fase de "Operabilidade e pilotos". A operabilidade
-virou a Fase 0b, porque ela é o caminho crítico do lançamento e não podia ficar
-espremida no fim. O que sobra aqui é a **transparência** (RFC 003, seção 6), que
-a v3.0 também não tinha listado.
-
-- [x] **Mural:** livro de registro social append-only (`maraca.events`), com a
-      regra de que uma escrita no mural nunca desfaz o ato que ela descreve.
-- [x] **Painel / "Saúde da comunidade":** disco, último backup, jobs pendentes,
-      moradores, versão, em pt-BR comum. Sem cor de alerta, sem gráficos.
-- [x] **Verificação de update no painel:** opt-in, desligada por padrão, e
-      **nunca** envia dado da tekoa para lugar nenhum.
-- [ ] **Vistoriar o `taina setup` numa máquina real**, do zero, cronometrado.
-- [ ] **2-3 comunidades piloto** instalando sozinhas, com observação.
-
-**Gate (= MVP lançado):** piloto não-técnico instala em <30min só com o guia;
-drill de backup/restore passa; uma comunidade usando semanalmente.
-
-**Total estimado:** ~28 semanas de trabalho na estimativa original da v3.0. Com
-a Fase 0b (operabilidade) e a transparência somadas, ~32 semanas de trabalho,
-9-10 meses calendário.
-
----
-
-## O que falta para o 0.1.0
-
-O `0.1.0` é o primeiro lançamento público. Ele já foi cortado (`0.1.0` a
-`0.4.0` estão publicadas); o caminho crítico que resta é curto e não tem nada
-de codar novo: é **provar em campo**.
-
-### Bloqueadores (sem isso não existe release)
-
-Nenhum. As releases estão publicadas: a imagem está no
-`ghcr.io/taina-labs/taina`, o pacote é público e o `taina setup` baixa dela.
-
-> O smoke test da imagem (`.github/workflows/docker-smoke.yml` no repo `taina`)
-> roda em toda tag `v*` e sobe o container de verdade: migrações no boot,
-> `/health` respondendo, e os dois diretórios de dados graváveis pelo usuário
-> `nobody`. Ele não substitui o ensaio manual, mas garante que o roteiro de
-> instalação não quebrou antes de a pessoa tentar.
-
-### Provas de que funciona (o gate do MVP)
-
-1. **Instalação limpa e cronometrada** numa máquina real, seguindo só o
-   `guias/instalacao.md`, sem ajuda técnica externa. Anotar onde travar.
-2. **Drill de backup/restore** com 100% de sucesso, feito por alguém não
-   técnico. É o item mais fácil de pular e o mais caro de pular.
-3. **Ensaio do `taina update`**: subir, atualizar, conferir a saúde, e voltar para
-   a versão anterior. Ninguém testou esse caminho ainda.
-4. **Benchmark no Pi 5** (gates das Fases 2 e 3): foto de 4MB + thumbnail < 3s,
-   1080p sem stutter, 10k arquivos fluidos, galeria com 5k fotos.
-
-### Recomendado, não bloqueia
-
-- Assentar o `docs/ui-prompts/` no repositório (slice 01 responsive pass, slice
-  04 Nhaman cuidados). Os arquivos já existem na árvore, mas `/docs/` continua
-  no `.git/info/exclude`, então quem chega pelo GitHub ainda não vê a
-  especificação que orientou o build da interface.
-- Conferir os guias citados nas READMEs do `taina` e do `oka`: alguns apontam
-  para caminhos que não existem mais.
-
-### Ordem sugerida
-
-1. ~~Tag de release, imagem publicada, pacote público.~~ Feito: `0.1.0` a `0.4.0`.
-2. Instalar numa máquina real do zero, cronometrando, e consertar o que travar.
-3. Drill de restore e ensaio do update.
-4. Benchmark no Pi 5.
-5. Anunciar.
-
-O passo 5 vem depois dos outros de propósito: um anúncio de `0.1.0` que
-convida a instalar é um convite para achar o primeiro bug, e a taxa de respostas
-a bugs de instalação cai muito quando você mesmo já instalou antes.
-
----
-
-## Pós-MVP (ordenado por valor)
-
-1. **API JSON v1** (token auth, OpenAPI): **feito** ([RFC 005](tecnico/RFC_005_API_E_APP.md), release `0.2.0`).
-2. **App nativo** (`okena`, Swift no iOS; Kotlin depois): em desenvolvimento. O
-   app 0.1.0 cobre sessão, pessoas, arquivos, fotos, mural, pedidos de acesso e
-   armazenamento.
-3. **Tainá Conecta**: relay de acesso remoto + backup off-site (assinatura,
-   modelo Nabu Casa).
-4. **Guará (chat)**: Channels/Presence.
-5. **Criptografia E2E no Ybira.** É o que permitiria dizer honestamente que o
-   zelador *não consegue* ler a casa de um morador. Hoje a privacidade da casa
-   é uma promessa de software e confiança, não criptográfica (RFC 003 D7).
-6. **Assembleia** (governança coletiva): Sensitive viram propostas votadas. Fora
-   do MVP do RFC 002, detalhado na seção 8 da RFC 003.
-7. **Imagem de appliance NixOS** para Raspberry Pi.
-8. **Tainá Hospedada**: frota de caixas por Tekoa (modelo Penpot), sobre o kernel Ypy.
-
-O produto institucional para universidades foi avaliado e **adiado** para depois
-do MVP, como produto separado. Ver a
-[RFC 004](tecnico/RFC_004_PRODUTO_UNIVERSIDADE.md).
-
-Em paralelo ao MVP corre o **kernel Ypy** ([RFC 006](tecnico/RFC_006_KERNEL.md)):
-o núcleo estável do Tainá (identidade, records, modelo social, mural e
-assembleia) extraído para uma biblioteca própria, de que o box, a plataforma
-hospedada e os produtos futuros dependem. O box já roda sobre ele: a caixa
-guarda tudo num arquivo SQLite, o isolamento entre comunidades é da camada da
-aplicação (coberto por testes) e o kernel é uma dependência do Hex (`ypy`).
-
----
-
-## Métricas de Sucesso
-
-| Métrica                    | Alvo                                  | Quando            |
-| -------------------------- | ------------------------------------- | ----------------- |
-| Instalação por não-técnico | < 30 min, 3 testes observados         | Gate Fase 4       |
-| Drill de restore           | 100% sucesso, ensaiado                | Gate Fase 4       |
-| Comunidade piloto ativa    | >= 1 usando semanalmente              | Lançamento +1 mês |
-| Benchmark Pi 5             | gates das Fases 2-3                   | Contínuo          |
-| Atualização sem medo       | update em 1 clique sem perda de dados | Fase 0b           |
-
----
-
-## Guias do operador
-
-- [Instalação](guias/instalacao.md): colocar no ar do zero, em menos de 30
-  minutos.
-- [Acesso remoto](guias/acesso-remoto.md): Tailscale, Headscale, WireGuard,
-  domínio público.
-- [Backup e restauração](guias/runbook-backup-restore.md): procedimento e
-  ensaio (drill).
-- [Hardware](guias/compras-hardware.md): o que comprar e como montar.
-- [Contribuindo via GitHub](guias/contribuindo-github.md): fluxo de branches e
-  pull requests.
-
----
-
-## Como Contribuir
-
-1. Leia o [Guia de Contribuição](CONTRIBUTING.md).
-2. Participe das [Discussions](https://github.com/taina-labs/tekoa/discussions).
-3. Confira a [RFC 002](tecnico/RFC_002_MVP.md) antes de propor mudanças de
-   arquitetura.
-
----
-
-## Licença
-
-Este roadmap e o projeto Tainá estão sob a
-[GNU Affero General Public License v3.0](LICENSE).
-
-**Mantenedores:** [@zoedsoupe](https://github.com/zoedsoupe) e comunidade
-
-_Documento vivo, atualizado conforme o desenvolvimento avança._
+# Roadmap do Tainá
+
+**Atualizado em:** 2026-11-11.
+
+O próximo marco é o `1.0.0`: uma alternativa real, usável e confiável para uma comunidade começar a substituir nuvens pagas de arquivos e fotos. O recorte é **capturar, guardar e recuperar**, não reproduzir todos os serviços de uma big tech.
+
+## 1. O que já existe
+
+Verificado no código de `taina` em 2026-11-10:
+
+- Caixa com uma comunidade por instância, SQLite, interface web LiveView e regras de isolamento na aplicação.
+- Contas, convites, recuperação de senha, papéis, dispositivos, pedidos e concessões de acesso.
+- Arquivos e pastas em `casa` ou `praça`, upload, download, preview, cotas, lixeira e restauração.
+- Galeria com miniaturas, linha do tempo e visualizador; mural e saúde da comunidade.
+- API JSON v1 com OpenAPI, tokens de dispositivo, manifesto de hashes, operações em lote e ETag.
+- App Flutter para iOS e Android, cobrindo as telas e os fluxos principais da API.
+- Backup local `.tar.gz`, manual ou agendado, com restore verificado em CI.
+- Imagens multi-arch, Compose/NixOS e instalação/atualização pelo Oka.
+
+A [revisão 0.1.0](tecnico/arquivo/REVIEW_0.1.0.md) é histórica. C1, C2, C4 e os principais achados altos já foram corrigidos.
+
+## 2. O que entra no 1.0.0
+
+### Fechar o produto
+
+- [ ] Tornar zona, filtro e publicação legíveis na galeria web e depois do upload.
+- [ ] Adicionar seleção manual da galeria e captura pela câmera no app.
+- [ ] Implementar o **espelho unidirecional do rolo** no app, para iOS e Android, sempre para a `casa`.
+- [ ] Implementar **backup cifrado off-site**, incremental e restaurável, sem substituir o backup local.
+- [ ] Usar kits de recuperação aleatórios e equivalentes. Sem Shamir ou limiar `k-de-n` neste corte.
+- [ ] Provar JPEG e HEIC com geração real de miniatura no container publicado.
+
+As regras técnicas desses dois recursos estão em [Arquitetura atual](tecnico/ARQUITETURA.md). E2E, espelho bidirecional e propagação de exclusões não entram.
+
+### Provar em campo e nos clientes
+
+| Prova | Situação registrada | O que ainda falta |
+| --- | --- | --- |
+| Instalação | Passou em VM por pessoa técnica. Docker, instalação e disponibilização em rede privada, sem TLS/Tailscale, levaram pouco menos de 20 minutos. | Observar pessoas não técnicas seguindo só o guia. |
+| Recursos limitados | A VM restrita em vCPUs, memória e swap funcionou bem, inclusive em picos de uso. É evidência qualitativa, não benchmark formal. | Medir os cenários e manter os resultados no ensaio. |
+| Backup local | Backup e restore passaram conforme o guia de ensaio. | Drill por pessoa não técnica. |
+| Update e rollback | Não verificado. | Ensaiar atualização, integridade dos dados e volta à versão anterior. |
+| App | Existem testes de Dart/Flutter. | Validar os fluxos do 1.0.0 em simulador iOS e emulador Android locais. |
+| Backup externo | Não implementado. | Restaurar uma caixa nova somente com cofre e kit, depois repetir com pessoa não técnica. |
+| Raspberry Pi 5 | Não comprado; nenhum resultado foi medido nesse hardware. | Foto de 4 MB com miniatura em menos de 3 s, vídeo 1080p, 10 mil arquivos e 5 mil fotos. |
+| Pilotos | Não verificado. | Duas ou três comunidades; pelo menos uma usando semanalmente. |
+
+Os resultados ficam no [ensaio de MVP](guias/ensaio-mvp-vm-macos.md). "Funcionou bem" não vira número inventado, e VM não vira certificação de Pi 5.
+
+### Fora do 1.0.0
+
+Busca, compartilhamento por link, backup pessoal portátil, upload resumível, universal links, offline-first, chat, assembleia, streaming, federação, Conecta e hospedagem gerenciada.
+
+## 3. Depois do 1.0.0
+
+Ordem de direção, sem datas ou promessa automática:
+
+1. Busca e formas de compartilhamento orientadas pelos pilotos.
+2. Backup pessoal portátil da `casa`.
+3. Universal links, upload resumível, cache e background conforme necessidade real.
+4. Imagem de appliance NixOS e kits de hardware.
+5. Conecta como conveniência opcional de relay e destino externo.
+6. Guará, com a assembleia apresentada no fluxo do chat mas mantendo propostas, votos e quórum como regras próprias.
+7. Streaming e demais contextos somente quando houver comunidade e capacidade de manutenção.
+
+## 4. Ideias, sem compromisso
+
+- Federação da `praça` entre comunidades parceiras.
+- Cópia de backup entre duas Tekoas.
+- Live Photos, álbuns do telefone como pastas e substituição de fotos editadas.
+- Exportação das próprias contribuições da `praça`.
+- Workspace para universidades como produto separado, somente com demanda institucional real.
+- Araci, Arapa, Ka'a e Karai como visão de longo prazo.
+
+E2E não faz parte do escopo atual nem da fila do 1.0.0. O host da comunidade é confiável; a cifra do 1.0.0 protege o backup contra o provedor externo, não esconde os dados de root na caixa.

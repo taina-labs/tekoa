@@ -1,5 +1,7 @@
 # RFC 006: Ypy, o kernel do Taina
 
+> **Documento histórico.** SQLite permanece, mas Ypy voltou a ser uma fronteira interna do monorepo. Veja a [arquitetura atual](../ARQUITETURA.md).
+
 **Status:** Aceita
 **Data:** 2026-10-12
 **Relacao:** Cria a biblioteca Ypy. Deriva da RFC_002 (deploy e instancia), da RFC_003 (modelo social, governanca, nomes) e da RFC_005 (API e app), e emenda as tres nos pontos da secao 16.

@@ -1,5 +1,7 @@
 # RFC 005: API JSON v1 e o app nativo
 
+> **Documento histórico.** A API já existe e o app atual é Flutter. O contrato vigente é o OpenAPI no repositório `taina`; o escopo está no [roadmap](../../ROADMAP.md).
+
 **Status:** Proposta
 **Data:** 2026-10-12
 **Relação:** Deriva do `RFC_002_MVP.md` (a API é o item 1 do pós-MVP, o app nativo é o item 2) e herda as regras sociais do `RFC_003_GOVERNANCA_E_TRANSPARENCIA.md` (zonas casa/praça, zeladora sem atalho). Não altera nenhum contexto; expõe o que já existe.

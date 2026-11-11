@@ -35,7 +35,7 @@ continua funcionando normalmente na rede local.
 | WireGuard puro (avançado) | você                      | manual        | máximo              | quem administra rede      |
 | Domínio público + proxy   | n/a (IP público)          | não precisa   | baixo               | VPS ou IP público em casa |
 
-A recomendação oficial do MVP (RFC 002, decisão D7) é o Tailscale, porque a tese
+O caminho recomendado para começar é o Tailscale, porque a tese
 do Tainá é uma comunidade não-técnica colocar o servidor no ar em menos de 30
 minutos. As outras opções existem porque o Tainá é software livre e auto-
 hospedado: quem decide é você. Nada neste guia te prende a um fornecedor.

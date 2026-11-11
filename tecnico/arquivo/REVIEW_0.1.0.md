@@ -1,5 +1,7 @@
 # Revisão 0.1.0: app nativo, cofre comunitário e prontidão para substituir iCloud/Google
 
+> **Revisão histórica, não backlog.** Retrata as versões 0.1.0 a 0.4.0 e o antigo app Swift. O estado e as pendências atuais estão no [roadmap](../../ROADMAP.md).
+
 **Status:** Artefato de revisão (não normativo)
 **Data:** 2026-10-21
 **Escopo:** Tainá `0.1.0` a `0.4.0` (repo `taina`), app nativo `okena` (branch `feat/ios-app`), deploy `oka`.
