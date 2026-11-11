@@ -109,7 +109,7 @@ são o vocabulário que os componentes consomem. Componentes usam só o semânti
 | ------------ | ----------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | `night`      | 950 `#060a14`, 900 `#0a101f`, 800 `#0f1729`, 700 `#15203a`, 600 `#1d2c4e`, 500 `#28395f`, 400 `#3a4d7a`, 300 `#56689b`, 200 `#8c9ac0`, 100 `#bfc8df`, 50 `#eef1f8` | Base neutra fria do céu noturno          |
 | `dawn`       | 300 `#ffd9a3`, 400 `#fcbe74`, 500 `#f2a65a`, 600 `#dd8a3e`, 700 `#b96d2c`                        | Marca (amanhecer)                        |
-| `ember`      | 400 `#f08a6c`, 500 `#e2674a`, 600 `#c44e33`                                                      | Calor secundário, horizonte de auth      |
+| `ember`      | 400 `#f08a6c`, 500 `#e2674a`, 600 `#c44e33`                                                      | Calor secundário                          |
 | `star`       | 50 `#faf7f0`, 100 `#f1ecdf`, 200 `#e4dcc8`                                                       | Branco quente das estrelas (texto)       |
 | `forest`     | 300 `#82cba4`, 400 `#5fb88a`, 500 `#3fa171`, 600 `#2f8159`, 700 `#246244`, 900 `#122e22`         | Acento de serviço: **Ybira** (arquivos)  |
 | `moon`       | 300 `#f4dfa6`, 400 `#eccd80`, 500 `#e3bc66`, 600 `#c49a48`, 700 `#9c7836`, 900 `#46350f`         | Acento de serviço: **Jaci** (fotos)      |
@@ -167,9 +167,9 @@ são o vocabulário que os componentes consomem. Componentes usam só o semânti
 - **Cor nunca sozinha.** Todo estado carrega também um símbolo ou uma frase
   (ver seção 9). Um aviso é `--feedback-warning` **e** um ícone **e** uma
   frase.
-- **Sem glow, sem gradiente decorativo.** O único gradiente sancionado é o
-  horizonte do `auth-layout` (radial em `ember`/`dawn`), que evoca o
-  amanhecer. Fora dele, gradiente é suspeito.
+- **Sem glow, sem gradiente decorativo.** Nenhum gradiente decorativo. O
+  horizonte do `auth-layout` (radial em `ember`/`dawn`) foi removido na revisão
+  v2: o `auth-layout` hoje é céu noturno plano com um campo de estrelas.
 
 ---
 
@@ -266,9 +266,9 @@ cards em `lg`, superfícies grandes em `xl`, pílulas para chips e badges em
 
 ### Layout de auth (`.auth-layout`)
 
-Céu noturno com horizonte de amanhecer (radial em `ember`/`dawn`) e um campo de
-estrelas em dois layers de `radial-gradient`. Card único de até 420px, centrado.
-Usado em setup, login e convite.
+Céu noturno plano, sem gradiente, com um campo de estrelas. Card único centrado,
+até a largura da shell mobile (390px, `measure.mobile`). Usado em setup, login e
+convite.
 
 ### Breakpoints
 
@@ -495,8 +495,8 @@ cometido; onde houver conflito, vale o `tokens.css`.
 
 ### Site e landing
 
-- Gradientes inspirados no amanhecer (com parcimônia, o horizonte do
-  `auth-layout` é a referência).
+- Gradientes inspirados no amanhecer, com parcimônia. Valem no site, não no
+  app.
 - Ilustrações de comunidade e servidores, mockups do superapp, seção clara
   sobre os serviços do MVP (Ybira e Jaci; **sem Guará**).
 - Estado inicial ("ligar, acessar `http://taina.local`, seguir o wizard") é o
